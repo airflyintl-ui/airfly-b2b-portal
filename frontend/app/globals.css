@@ -1,0 +1,37 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  font-family:Arial, Helvetica, sans-serif;
+  background:#f8f9fa;
+}
+
+.navbar{
+  background:#0d6efd !important;
+}
+
+.hero{
+  min-height:600px;
+  background:linear-gradient(rgba(13,110,253,.85), rgba(13,110,253,.85));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  text-align:center;
+}
+
+.logo{
+  width:150px;
+  margin-bottom:20px;
+}
+
+.btn-gold{
+  background:#ffc107;
+  color:#000;
+  font-weight:bold;
+}
