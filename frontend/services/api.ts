@@ -1,3 +1,5 @@
-const API = "http://192.168.133.130:8000/api";
+const API =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://airfly-b2b-backend-production.up.railway.app/api";
 
 export default API;

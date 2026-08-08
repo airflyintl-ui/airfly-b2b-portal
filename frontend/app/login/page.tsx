@@ -12,38 +12,86 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!email.trim()) {
+      alert("Please enter your email");
+      return;
+    }
+
+    if (!password) {
+      alert("Please enter your password");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await fetch(`${API}/login`, {
+      const loginURL = `${API}/login`;
+
+      console.log("Laravel API:", API);
+      console.log("Login URL:", loginURL);
+
+      const response = await fetch(loginURL, {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
+
         body: JSON.stringify({
-          email,
-          password,
+          email: email.trim(),
+          password: password,
         }),
       });
 
-      const data = await response.json();
+      console.log("HTTP Status:", response.status);
 
-      console.log(data);
+      const responseText = await response.text();
+
+      console.log("Laravel Response:", responseText);
+
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error("Invalid JSON response:", jsonError);
+
+        alert(
+          `Laravel API returned an invalid response.\nHTTP Status: ${response.status}`
+        );
+
+        return;
+      }
 
       if (response.ok && data.success) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("agent", JSON.stringify(data.agent));
+        // Save authentication token
+        localStorage.setItem("token", data.token || "");
+
+        // Save agent information
+        localStorage.setItem(
+          "agent",
+          JSON.stringify(data.agent || {})
+        );
 
         alert("Login Successful");
 
         router.push("/dashboard");
-      } else {
-        alert(data.message || "Invalid Login");
+
+        return;
       }
+
+      // Laravel returned an error
+      alert(
+        data.message ||
+          "Invalid email or password"
+      );
     } catch (error) {
-      console.error(error);
-      alert("Cannot connect to Laravel API");
+      console.error("LOGIN ERROR:", error);
+
+      alert(
+        "Cannot connect to Laravel API.\n\nPlease check your internet connection or contact administrator."
+      );
     } finally {
       setLoading(false);
     }
@@ -55,63 +103,109 @@ export default function Login() {
       style={{
         minHeight: "100vh",
         background: "#f4f7fc",
+        padding: "20px",
       }}
     >
       <div
         className="card shadow-lg border-0"
         style={{
           width: "420px",
+          maxWidth: "100%",
           borderRadius: "15px",
         }}
       >
-        <div className="card-body p-5">
-          <div className="text-center mb-4">
-            <img src="/images/logo.jpg" width="90" alt="Logo" />
+        <div className="card-body p-4">
 
-            <h3 className="mt-3 fw-bold">
+          {/* Logo / Header */}
+          <div className="text-center mb-4">
+
+            <img
+              src="/images/logo.jpg"
+              alt="Air Fly International"
+              style={{
+                width: "120px",
+                height: "auto",
+                objectFit: "contain",
+                marginBottom: "15px",
+              }}
+            />
+
+            <h3 className="fw-bold mb-1">
               AIR FLY INTERNATIONAL
             </h3>
 
-            <p className="text-muted">
+            <p className="text-muted mb-0">
               Agent Login Portal
             </p>
           </div>
 
+          {/* Email */}
           <div className="mb-3">
-            <label>Email</label>
+
+            <label className="form-label fw-semibold">
+              Email
+            </label>
 
             <input
               type="email"
               className="form-control"
               placeholder="Enter Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleLogin();
+                }
+              }}
             />
+
           </div>
 
+          {/* Password */}
           <div className="mb-3">
-            <label>Password</label>
+
+            <label className="form-label fw-semibold">
+              Password
+            </label>
 
             <input
               type="password"
               className="form-control"
               placeholder="Enter Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleLogin();
+                }
+              }}
             />
+
           </div>
 
+          {/* Login Button */}
           <button
+            type="button"
             className="btn btn-primary w-100"
             onClick={handleLogin}
             disabled={loading}
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading
+              ? "Logging in..."
+              : "Login"}
           </button>
 
-          <p className="text-center mt-3 text-muted">
+          {/* Footer */}
+          <p className="text-center mt-3 mb-0 text-muted">
             AIR FLY INTERNATIONAL B2B Portal
           </p>
+
         </div>
       </div>
     </div>
