@@ -64,6 +64,7 @@ export default function Login() {
         return;
       }
 
+      // Login successful
       if (response.ok && data.success) {
         // Save authentication token
         localStorage.setItem("token", data.token || "");
@@ -90,7 +91,7 @@ export default function Login() {
       console.error("LOGIN ERROR:", error);
 
       alert(
-        "Cannot connect to Laravel API.\n\nPlease check your internet connection or contact administrator."
+        "Cannot connect to Laravel API.\n\nPlease make sure Laravel backend is running."
       );
     } finally {
       setLoading(false);
@@ -116,7 +117,10 @@ export default function Login() {
       >
         <div className="card-body p-4">
 
-          {/* Logo / Header */}
+          {/* =========================
+              LOGO / HEADER
+          ========================= */}
+
           <div className="text-center mb-4">
 
             <img
@@ -137,9 +141,14 @@ export default function Login() {
             <p className="text-muted mb-0">
               Agent Login Portal
             </p>
+
           </div>
 
-          {/* Email */}
+
+          {/* =========================
+              EMAIL
+          ========================= */}
+
           <div className="mb-3">
 
             <label className="form-label fw-semibold">
@@ -164,7 +173,11 @@ export default function Login() {
 
           </div>
 
-          {/* Password */}
+
+          {/* =========================
+              PASSWORD
+          ========================= */}
+
           <div className="mb-3">
 
             <label className="form-label fw-semibold">
@@ -189,20 +202,57 @@ export default function Login() {
 
           </div>
 
-          {/* Login Button */}
+
+          {/* =========================
+              LOGIN BUTTON
+          ========================= */}
+
           <button
             type="button"
             className="btn btn-primary w-100"
             onClick={handleLogin}
             disabled={loading}
+            style={{
+              height: "45px",
+              fontWeight: "600",
+              fontSize: "16px",
+            }}
           >
             {loading
               ? "Logging in..."
               : "Login"}
           </button>
 
-          {/* Footer */}
-          <p className="text-center mt-3 mb-0 text-muted">
+
+          {/* =========================
+              REGISTER NEW AGENCY
+          ========================= */}
+
+          <div className="text-center mt-3">
+
+            <span className="text-muted">
+              Don't have an agency account?
+            </span>
+
+            <br />
+
+            <button
+              type="button"
+              className="btn btn-link fw-semibold p-0 mt-1"
+              onClick={() => router.push("/register")}
+              disabled={loading}
+            >
+              Register New Agency
+            </button>
+
+          </div>
+
+
+          {/* =========================
+              FOOTER
+          ========================= */}
+
+          <p className="text-center mt-4 mb-0 text-muted">
             AIR FLY INTERNATIONAL B2B Portal
           </p>
 

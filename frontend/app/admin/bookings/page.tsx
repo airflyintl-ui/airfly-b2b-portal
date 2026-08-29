@@ -1,519 +1,651 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-interface Flight {
-  id: number;
-  airline: {
-    id: number;
-    name: string;
-  };
-  flight_no: string;
-  from: string;
-  to: string;
-  departure_time: string;
-  arrival_time: string;
-  economy_fare: number;
-  business_fare: number;
-}
+const API =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://127.0.0.1:8090/api";
 
-interface Agent {
+type Flight = {
   id: number;
-  agency_name: string;
-}
+  flight_no?: string;
+  from?: string;
+  to?: string;
+  departure_time?: string;
+  arrival_time?: string;
+  economy_fare?: string | number;
+  business_fare?: string | number;
+  available_seats?: number;
+  status?: boolean;
+};
 
-interface Booking {
+type Booking = {
   id: number;
+  agent_id: number;
+  flight_id: number;
   pnr: string;
   passenger_name: string;
   passport: string;
-
-  flight: Flight;
-
-  total_amount: number;
-
+  nationality: string;
+  date_of_birth: string;
+  gender: string;
+  phone: string;
+  email: string;
+  journey_type: string;
+  travel_class: string;
+  adults: number;
+  children: number;
+  infants: number;
+  total_amount: string | number;
+  ticket_number: string;
+  payment_status: string;
   booking_status: string;
-
+  remarks?: string | null;
   created_at: string;
-}
+  updated_at: string;
+  flight?: Flight;
+};
 
-export default function AdminBookingsPage() {
+export default function BookingsPage() {
+  const router = useRouter();
 
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [flights, setFlights] = useState<Flight[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [wallet, setWallet] = useState("0.00");
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [search, setSearch] = useState("");
+  const fetchBookings = useCallback(async () => {
+    const token = localStorage.getItem("token");
 
-  const [form, setForm] = useState({
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
-    agent_id: "",
+    setLoading(true);
+    setError("");
 
-    flight_id: "",
+    try {
+      const response = await fetch(`${API}/bookings`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
 
-    passenger_name: "",
+      const data = await response.json();
 
-    passport: "",
+      console.log("BOOKINGS RESPONSE:", data);
 
-    seat_class: "Economy",
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        router.push("/login");
+        return;
+      }
 
-  });
+      if (response.ok && data.success) {
+        setBookings(data.bookings || []);
+      } else {
+        setError(data.message || "Unable to load bookings.");
+      }
+    } catch (err) {
+      console.error("Bookings error:", err);
+
+      setError(
+        "Cannot connect to Laravel API. Please make sure backend is running on port 8090."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  const fetchWallet = useCallback(async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API}/wallet/statement`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+
+      const data = await response.json();
+
+      console.log("WALLET RESPONSE:", data);
+
+      if (response.ok && data.success) {
+        setWallet(data.wallet || "0.00");
+      }
+    } catch (err) {
+      console.error("Wallet error:", err);
+    }
+  }, []);
 
   useEffect(() => {
+    fetchBookings();
+    fetchWallet();
+  }, [fetchBookings, fetchWallet]);
 
-    loadBookings();
-
-    loadFlights();
-
-    loadAgents();
-
-  }, []);  async function loadBookings() {
+  const formatDate = (date?: string) => {
+    if (!date) return "N/A";
 
     try {
-
-      setLoading(true);
-
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        "http://127.0.0.1:8000/api/admin/bookings",
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        setBookings(data.bookings);
-      }
-
-    } catch (err) {
-
-      console.log(err);
-
-    } finally {
-
-      setLoading(false);
-
+      return new Date(date).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return date;
     }
+  };
 
-  }
+  const formatMoney = (amount?: string | number) => {
+    const number = Number(amount || 0);
 
-  async function loadFlights() {
-
-    try {
-
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        "http://127.0.0.1:8000/api/flights",
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        setFlights(data.flights);
-      }
-
-    } catch (err) {
-
-      console.log(err);
-
-    }
-
-  }
-
-  async function loadAgents() {
-
-    try {
-
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        "http://127.0.0.1:8000/api/agents",
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.success) {
-        setAgents(data.agents);
-      }
-
-    } catch (err) {
-
-      console.log(err);
-
-    }
-
-  }  async function saveBooking() {
-
-    try {
-
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        "http://127.0.0.1:8000/api/bookings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        }
-      );
-
-      const data = await res.json();
-
-      alert(data.message);
-
-      if (data.success) {
-
-        setForm({
-          agent_id: "",
-          flight_id: "",
-          passenger_name: "",
-          passport: "",
-          seat_class: "Economy",
-        });
-
-        loadBookings();
-
-      }
-
-    } catch (err) {
-
-      console.log(err);
-
-      alert("Booking Failed");
-
-    }
-
-  }
-
-  async function cancelBooking(id: number) {
-
-    if (!confirm("Cancel this booking?")) return;
-
-    try {
-
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/bookings/${id}/cancel`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      alert(data.message);
-
-      if (data.success) {
-        loadBookings();
-      }
-
-    } catch (err) {
-
-      console.log(err);
-
-    }
-
-  }
-
-  const filteredBookings = useMemo(() => {
-
-    return bookings.filter((b) => {
-
-      const s = search.toLowerCase();
-
-      return (
-
-        b.pnr.toLowerCase().includes(s) ||
-
-        b.passenger_name.toLowerCase().includes(s) ||
-
-        b.passport.toLowerCase().includes(s) ||
-
-        b.flight.airline.name.toLowerCase().includes(s) ||
-
-        b.flight.flight_no.toLowerCase().includes(s)
-
-      );
-
+    return number.toLocaleString("en-BD", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     });
+  };
 
-  }, [bookings, search]);
+  const getStatusClass = (status?: string) => {
+    if (!status) return "bg-secondary";
+
+    const value = status.toLowerCase();
+
+    if (
+      value === "confirmed" ||
+      value === "paid" ||
+      value === "approved"
+    ) {
+      return "bg-success";
+    }
+
+    if (
+      value === "pending" ||
+      value === "processing"
+    ) {
+      return "bg-warning text-dark";
+    }
+
+    if (
+      value === "cancelled" ||
+      value === "canceled" ||
+      value === "failed"
+    ) {
+      return "bg-danger";
+    }
+
+    return "bg-secondary";
+  };
+
+  const viewBooking = (booking: Booking) => {
+    localStorage.setItem(
+      "selected_booking",
+      JSON.stringify(booking)
+    );
+
+    router.push(`/bookings/${booking.id}`);
+  };
+
+  const printTicket = (booking: Booking) => {
+    localStorage.setItem(
+      "selected_booking",
+      JSON.stringify(booking)
+    );
+
+    router.push(`/bookings/${booking.id}?print=true`);
+  };
+
+  const searchFlights = () => {
+    router.push("/flight-search");
+  };
+
+  const bookFlight = () => {
+    router.push("/flight-search");
+  };
+
+  const confirmedBookings = bookings.filter(
+    (booking) =>
+      booking.booking_status?.toLowerCase() === "confirmed"
+  ).length;
 
   return (
+    <div
+      className="container-fluid py-4"
+      style={{ background: "#f8f9fa", minHeight: "100vh" }}
+    >
+      {/* HEADER */}
 
-    <div className="container-fluid py-4">      <div className="row">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="fw-bold mb-1">
+            My Bookings
+          </h2>
 
-        {/* LEFT */}
+          <p className="text-muted mb-0">
+            View and manage your flight bookings
+          </p>
+        </div>
 
-        <div className="col-lg-4">
+        <div className="d-flex gap-2">
+          <button
+            type="button"
+            className="btn btn-outline-primary"
+            onClick={() => {
+              fetchBookings();
+              fetchWallet();
+            }}
+            disabled={loading}
+          >
+            {loading ? "Refreshing..." : "↻ Refresh"}
+          </button>
 
-          <div className="card shadow mb-4">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={bookFlight}
+          >
+            + Book Flight
+          </button>
+        </div>
+      </div>
 
-            <div className="card-header bg-primary text-white">
-              <h5 className="mb-0">New Booking</h5>
-            </div>
+      {/* SUMMARY CARDS */}
 
+      <div className="row g-3 mb-4">
+
+        <div className="col-md-4">
+          <div className="card border-0 shadow-sm h-100">
             <div className="card-body">
+              <small className="text-muted">
+                Total Bookings
+              </small>
 
-              <div className="mb-3">
-                <label className="form-label">Agent</label>
-
-                <select
-                  className="form-select"
-                  value={form.agent_id}
-                  onChange={(e)=>
-                    setForm({...form,agent_id:e.target.value})
-                  }
-                >
-                  <option value="">Select Agent</option>
-
-                  {agents.map(agent=>(
-                    <option key={agent.id} value={agent.id}>
-                      {agent.agency_name}
-                    </option>
-                  ))}
-
-                </select>
-
-              </div>
-
-              <div className="mb-3">
-
-                <label className="form-label">Flight</label>
-
-                <select
-                  className="form-select"
-                  value={form.flight_id}
-                  onChange={(e)=>
-                    setForm({...form,flight_id:e.target.value})
-                  }
-                >
-
-                  <option value="">Select Flight</option>
-
-                  {flights.map(f=>(
-                    <option key={f.id} value={f.id}>
-                      {f.airline.name} | {f.flight_no} | {f.from} → {f.to}
-                    </option>
-                  ))}
-
-                </select>
-
-              </div>
-
-              <div className="mb-3">
-
-                <label className="form-label">Passenger Name</label>
-
-                <input
-                  className="form-control"
-                  value={form.passenger_name}
-                  onChange={(e)=>
-                    setForm({...form,passenger_name:e.target.value})
-                  }
-                />
-
-              </div>
-
-              <div className="mb-3">
-
-                <label className="form-label">Passport</label>
-
-                <input
-                  className="form-control"
-                  value={form.passport}
-                  onChange={(e)=>
-                    setForm({...form,passport:e.target.value})
-                  }
-                />
-
-              </div>
-
-              <div className="mb-3">
-
-                <label className="form-label">Class</label>
-
-                <select
-                  className="form-select"
-                  value={form.seat_class}
-                  onChange={(e)=>
-                    setForm({...form,seat_class:e.target.value})
-                  }
-                >
-                  <option>Economy</option>
-                  <option>Business</option>
-                </select>
-
-              </div>
-
-              <button
-                className="btn btn-success w-100"
-                onClick={saveBooking}
-              >
-                Save Booking
-              </button>
-
+              <h3 className="fw-bold mt-2 mb-0">
+                {bookings.length}
+              </h3>
             </div>
-
           </div>
+        </div>
+
+        <div className="col-md-4">
+          <div className="card border-0 shadow-sm h-100">
+            <div className="card-body">
+              <small className="text-muted">
+                Confirmed Bookings
+              </small>
+
+              <h3 className="fw-bold text-success mt-2 mb-0">
+                {confirmedBookings}
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-4">
+          <div className="card border-0 shadow-sm h-100">
+            <div className="card-body">
+              <small className="text-muted">
+                Wallet Balance
+              </small>
+
+              <h3 className="fw-bold text-primary mt-2 mb-0">
+                ৳ {formatMoney(wallet)}
+              </h3>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ERROR */}
+
+      {error && (
+        <div
+          className="alert alert-danger d-flex justify-content-between align-items-center"
+          role="alert"
+        >
+          <span>{error}</span>
+
+          <button
+            type="button"
+            className="btn btn-sm btn-danger"
+            onClick={fetchBookings}
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* BOOKING HISTORY */}
+
+      <div className="card border-0 shadow-sm">
+
+        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+
+          <div>
+            <h5 className="fw-bold mb-0">
+              Booking History
+            </h5>
+          </div>
+
+          <span className="badge bg-primary">
+            {bookings.length} Booking
+            {bookings.length !== 1 ? "s" : ""}
+          </span>
 
         </div>
 
-        {/* RIGHT */}
+        <div className="card-body p-0">
 
-        <div className="col-lg-8">
+          {/* LOADING */}
 
-          <div className="card shadow">
+          {loading && (
+            <div className="text-center py-5">
 
-            <div className="card-header d-flex justify-content-between">
-
-              <h5>Bookings</h5>
-
-              <input
-                className="form-control w-25"
-                placeholder="Search..."
-                value={search}
-                onChange={(e)=>setSearch(e.target.value)}
+              <div
+                className="spinner-border text-primary mb-3"
+                role="status"
               />
 
+              <p className="text-muted mb-0">
+                Loading bookings...
+              </p>
+
             </div>
+          )}
 
-            <div className="card-body p-0">
+          {/* NO BOOKINGS */}
 
-              <table className="table table-bordered table-hover mb-0">
+          {!loading && bookings.length === 0 && !error && (
+            <div className="text-center py-5">
 
-                <thead className="table-dark">
+              <div
+                style={{
+                  fontSize: "55px",
+                  lineHeight: "1",
+                }}
+              >
+                ✈️
+              </div>
+
+              <h5 className="mt-3">
+                No bookings found
+              </h5>
+
+              <p className="text-muted">
+                You haven't made any bookings yet.
+              </p>
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={searchFlights}
+              >
+                Search Flights
+              </button>
+
+            </div>
+          )}
+
+          {/* BOOKINGS */}
+
+          {!loading && bookings.length > 0 && (
+            <div className="table-responsive">
+
+              <table className="table table-hover align-middle mb-0">
+
+                <thead className="table-light">
 
                   <tr>
-                    <th>#</th>
-                    <th>PNR</th>
-                    <th>Passenger</th>
-                    <th>Flight</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th style={{ width: '150px' }}>Action</th>
+
+                    <th className="px-3">
+                      Booking
+                    </th>
+
+                    <th>
+                      Passenger
+                    </th>
+
+                    <th>
+                      Flight
+                    </th>
+
+                    <th>
+                      Journey
+                    </th>
+
+                    <th>
+                      Amount
+                    </th>
+
+                    <th>
+                      Payment
+                    </th>
+
+                    <th>
+                      Status
+                    </th>
+
+                    <th className="text-center">
+                      Action
+                    </th>
+
                   </tr>
 
                 </thead>
 
                 <tbody>
 
-                  {loading ? (
+                  {bookings.map((booking) => (
 
-                    <tr>
-                      <td colSpan={7} className="text-center py-5">
-                        Loading...
+                    <tr key={booking.id}>
+
+                      {/* BOOKING */}
+
+                      <td className="px-3">
+
+                        <div className="fw-bold">
+                          PNR: {booking.pnr}
+                        </div>
+
+                        <small className="text-muted">
+                          ID #{booking.id}
+                        </small>
+
+                        <br />
+
+                        <small className="text-muted">
+                          {formatDate(booking.created_at)}
+                        </small>
+
                       </td>
-                    </tr>
 
-                  ) : filteredBookings.length===0 ? (
+                      {/* PASSENGER */}
 
-                    <tr>
-                      <td colSpan={7} className="text-center py-5">
-                        No Booking Found
+                      <td>
+
+                        <div className="fw-semibold">
+                          {booking.passenger_name}
+                        </div>
+
+                        <small className="text-muted">
+                          {booking.passport}
+                        </small>
+
+                        <br />
+
+                        <small className="text-muted">
+                          {booking.phone}
+                        </small>
+
                       </td>
-                    </tr>
 
-                  ) : (
+                      {/* FLIGHT */}
 
-                    filteredBookings.map((item,index)=>(
+                      <td>
 
-                      <tr key={item.id}>
+                        <div className="fw-bold">
 
-                        <td>{index+1}</td>
+                          {booking.flight?.flight_no ||
+                            "N/A"}
 
-                        <td>{item.pnr}</td>
+                        </div>
 
-                        <td>
-                          {item.passenger_name}
-                          <br/>
-                          <small>{item.passport}</small>
-                        </td>
+                        <div>
+                          {booking.flight?.from ||
+                            "N/A"}{" "}
+                          →{" "}
+                          {booking.flight?.to ||
+                            "N/A"}
+                        </div>
 
-                        <td>
-                          {item.flight.airline.name}
-                          <br/>
-                          {item.flight.flight_no}
-                        </td>
+                        <small className="text-muted">
 
-                        <td>
-                          ৳ {Number(item.total_amount).toLocaleString()}
-                        </td>
+                          {booking.flight
+                            ?.departure_time
+                            ? formatDate(
+                                booking.flight
+                                  .departure_time
+                              )
+                            : "N/A"}
 
-                        <td>
+                        </small>
 
-                          <span className={`badge ${
-                            item.booking_status==="Confirmed"
-                            ? "bg-success"
-                            : "bg-danger"
-                          }`}>
-                            {item.booking_status}
-                          </span>
+                      </td>
 
-                        </td>
+                      {/* JOURNEY */}
 
-                        <td>
+                      <td>
+
+                        <span className="badge bg-light text-dark border">
+                          {booking.journey_type}
+                        </span>
+
+                        <br />
+
+                        <small className="text-muted">
+                          {booking.travel_class}
+                        </small>
+
+                        <br />
+
+                        <small className="text-muted">
+                          A: {booking.adults} | C:{" "}
+                          {booking.children} | I:{" "}
+                          {booking.infants}
+                        </small>
+
+                      </td>
+
+                      {/* AMOUNT */}
+
+                      <td>
+
+                        <div className="fw-bold text-success">
+                          ৳{" "}
+                          {formatMoney(
+                            booking.total_amount
+                          )}
+                        </div>
+
+                        {booking.ticket_number && (
+                          <small className="text-muted">
+                            Ticket:{" "}
+                            {booking.ticket_number}
+                          </small>
+                        )}
+
+                      </td>
+
+                      {/* PAYMENT */}
+
+                      <td>
+
+                        <span
+                          className={`badge ${getStatusClass(
+                            booking.payment_status
+                          )}`}
+                        >
+                          {booking.payment_status}
+                        </span>
+
+                      </td>
+
+                      {/* STATUS */}
+
+                      <td>
+
+                        <span
+                          className={`badge ${getStatusClass(
+                            booking.booking_status
+                          )}`}
+                        >
+                          {booking.booking_status}
+                        </span>
+
+                      </td>
+
+                      {/* ACTION */}
+
+                      <td className="text-center">
+
+                        <div className="d-flex justify-content-center gap-1">
 
                           <button
-                            className="btn btn-danger btn-sm"
-                            onClick={()=>cancelBooking(item.id)}
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() =>
+                              viewBooking(booking)
+                            }
+                            title="View Booking"
                           >
-                            Cancel
+                            👁 View
                           </button>
 
-                        </td>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-dark"
+                            onClick={() =>
+                              printTicket(booking)
+                            }
+                            title="Print Ticket"
+                          >
+                            🖨 Print
+                          </button>
 
-                      </tr>
+                        </div>
 
-                    ))
+                      </td>
 
-                  )}
+                    </tr>
+
+                  ))}
 
                 </tbody>
 
               </table>
 
             </div>
-
-          </div>
+          )}
 
         </div>
 
       </div>
 
     </div>
-
   );
-
 }
-    
