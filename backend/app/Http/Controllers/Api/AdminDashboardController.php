@@ -11,24 +11,42 @@ class AdminDashboardController extends Controller
 {
     public function index()
     {
+        // Total wallet balance of all agents
         $wallet = Agent::sum('wallet');
 
+        // Total agents
         $totalAgents = Agent::count();
 
+        // Total bookings
         $totalBookings = Booking::count();
 
-        $confirmedBookings = Booking::where('status', 'Confirmed')->count();
+        // Confirmed bookings
+        $confirmedBookings = Booking::where(
+            'booking_status',
+            'Confirmed'
+        )->count();
 
-        $cancelledBookings = Booking::where('status', 'Cancelled')->count();
+        // Cancelled bookings
+        $cancelledBookings = Booking::where(
+            'booking_status',
+            'Cancelled'
+        )->count();
 
-        $pendingRecharge = Recharge::where('status', 'Pending')->count();
+        // Pending recharge
+        $pendingRecharge = Recharge::where(
+            'status',
+            'Pending'
+        )->count();
 
-        $recentBookings = Booking::latest()->take(5)->get();
+        // Latest 5 bookings
+        $recentBookings = Booking::latest()
+            ->take(5)
+            ->get();
 
         return response()->json([
             'success' => true,
 
-            'wallet' => $wallet,
+            'wallet' => (float) $wallet,
 
             'total_agents' => $totalAgents,
 

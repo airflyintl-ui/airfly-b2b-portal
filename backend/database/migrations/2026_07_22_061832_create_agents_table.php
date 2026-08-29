@@ -6,36 +6,36 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
+    public function up(): void
     {
         Schema::create('agents', function (Blueprint $table) {
-    $table->id();
+            $table->id();
 
-    $table->string('agency_name');
-    $table->string('owner_name');
-    $table->string('email')->unique();
-    $table->string('phone');
-    $table->string('password');
+            $table->string('agency_name');
 
-    $table->decimal('wallet',12,2)->default(0);
+            $table->string('owner_name');
 
-    $table->enum('status',['active','inactive'])->default('active');
+            $table->string('email')->unique();
 
-    $table->timestamps();
-});
+            $table->string('mobile');
+
+            $table->text('address');
+
+            $table->string('trade_license')->unique();
+
+            $table->string('password');
+
+            $table->enum('status', [
+                'pending',
+                'approved',
+                'rejected'
+            ])->default('pending');
+
+            $table->timestamps();
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('agents');
     }

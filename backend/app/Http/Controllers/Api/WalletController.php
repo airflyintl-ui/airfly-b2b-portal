@@ -9,28 +9,49 @@ use Illuminate\Http\Request;
 class WalletController extends Controller
 {
     /**
-     * Wallet Statement
+     * =====================================================
+     * WALLET STATEMENT
+     * =====================================================
+     *
+     * Logged-in agent can see ONLY their own
+     * wallet transactions.
      */
     public function statement(Request $request)
     {
-        $agentId = $request->agent_id;
+        $agent = $request->user();
 
-        if (!$agentId) {
+        if (!$agent) {
 
             return response()->json([
-                "success"=>false,
-                "message"=>"agent_id required"
-            ],422);
-
+                'success' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
         }
+
+
+        /*
+         * Get only logged-in agent transactions.
+         */
+        $statement = WalletTransaction::where(
+            'agent_id',
+            $agent->id
+        )
+            ->latest()
+            ->get();
+
 
         return response()->json([
 
-            "success"=>true,
+            'success' => true,
 
-            "statement"=>WalletTransaction::where('agent_id',$agentId)
-                    ->latest()
-                    ->get()
+            'agent_id' =>
+                $agent->id,
+
+            'wallet' =>
+                $agent->wallet,
+
+            'statement' =>
+                $statement
 
         ]);
     }
