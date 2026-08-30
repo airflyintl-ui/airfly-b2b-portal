@@ -11,68 +11,93 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        // Logged-in agent
         $agent = $request->user();
 
         if (!$agent) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthenticated',
+                'message' => 'Unauthenticated.',
             ], 401);
         }
 
-        $agentId = $agent->id;
+        // ==========================================
+        // AGENT BOOKINGS
+        // ==========================================
+
+        $totalBookings = Booking::where(
+            'agent_id',
+            $agent->id
+        )->count();
+
+        // ==========================================
+        // PENDING RECHARGES
+        // ==========================================
+
+        $pendingRecharges = Recharge::where(
+            'agent_id',
+            $agent->id
+        )
+        ->where('status', 'Pending')
+        ->count();
+
+        // ==========================================
+        // APPROVED RECHARGES
+        // ==========================================
+
+        $approvedRecharges = Recharge::where(
+            'agent_id',
+            $agent->id
+        )
+        ->where('status', 'Approved')
+        ->count();
+
+        // ==========================================
+        // LATEST BOOKINGS
+        // ==========================================
+
+        $latestBookings = Booking::where(
+            'agent_id',
+            $agent->id
+        )
+        ->latest()
+        ->take(5)
+        ->get();
+
+        // ==========================================
+        // LATEST RECHARGES
+        // ==========================================
+
+        $latestRecharges = Recharge::where(
+            'agent_id',
+            $agent->id
+        )
+        ->latest()
+        ->take(5)
+        ->get();
+
+        // ==========================================
+        // RESPONSE
+        // ==========================================
 
         return response()->json([
             'success' => true,
 
-            'agent' => [
-                'id' => $agent->id,
-                'agency_name' => $agent->agency_name,
-                'owner_name' => $agent->owner_name,
-                'email' => $agent->email,
-                'phone' => $agent->phone,
-                'wallet' => $agent->wallet,
-                'status' => $agent->status,
-            ],
+            'agent' => $agent,
 
             'cards' => [
                 'wallet_balance' => $agent->wallet,
 
-                'total_bookings' => Booking::where(
-                    'agent_id',
-                    $agentId
-                )->count(),
+                'total_bookings' => $totalBookings,
 
-                'pending_recharges' => Recharge::where(
-                    'agent_id',
-                    $agentId
-                )
-                    ->where('status', 'Pending')
-                    ->count(),
+                'pending_recharges' => $pendingRecharges,
 
-                'approved_recharges' => Recharge::where(
-                    'agent_id',
-                    $agentId
-                )
-                    ->where('status', 'Approved')
-                    ->count(),
+                'approved_recharges' => $approvedRecharges,
             ],
 
-            'latest_bookings' => Booking::where(
-                'agent_id',
-                $agentId
-            )
-                ->latest()
-                ->take(5)
-                ->get(),
+            'latest_bookings' => $latestBookings,
 
-            'latest_recharges' => Recharge::where(
-                'agent_id',
-                $agentId
-            )
-                ->latest()
-                ->take(5)
-                ->get(),
+            'latest_recharges' => $latestRecharges,
         ]);
     }
 }
