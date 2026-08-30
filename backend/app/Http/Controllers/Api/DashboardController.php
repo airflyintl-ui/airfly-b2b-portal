@@ -9,10 +9,24 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    /**
+     * Agent Dashboard
+     *
+     * GET /api/dashboard
+     *
+     * Protected by auth:sanctum
+     */
     public function index(Request $request)
     {
-        // Logged-in agent
+        // ==========================================
+        // GET LOGGED-IN AGENT
+        // ==========================================
+
         $agent = $request->user();
+
+        // ==========================================
+        // AUTHENTICATION CHECK
+        // ==========================================
 
         if (!$agent) {
             return response()->json([
@@ -22,7 +36,7 @@ class DashboardController extends Controller
         }
 
         // ==========================================
-        // AGENT BOOKINGS
+        // TOTAL BOOKINGS FOR THIS AGENT
         // ==========================================
 
         $totalBookings = Booking::where(
@@ -31,7 +45,7 @@ class DashboardController extends Controller
         )->count();
 
         // ==========================================
-        // PENDING RECHARGES
+        // PENDING RECHARGES FOR THIS AGENT
         // ==========================================
 
         $pendingRecharges = Recharge::where(
@@ -42,7 +56,7 @@ class DashboardController extends Controller
         ->count();
 
         // ==========================================
-        // APPROVED RECHARGES
+        // APPROVED RECHARGES FOR THIS AGENT
         // ==========================================
 
         $approvedRecharges = Recharge::where(
@@ -53,7 +67,7 @@ class DashboardController extends Controller
         ->count();
 
         // ==========================================
-        // LATEST BOOKINGS
+        // LATEST 5 BOOKINGS
         // ==========================================
 
         $latestBookings = Booking::where(
@@ -65,7 +79,7 @@ class DashboardController extends Controller
         ->get();
 
         // ==========================================
-        // LATEST RECHARGES
+        // LATEST 5 RECHARGES
         // ==========================================
 
         $latestRecharges = Recharge::where(
@@ -77,13 +91,27 @@ class DashboardController extends Controller
         ->get();
 
         // ==========================================
-        // RESPONSE
+        // DASHBOARD RESPONSE
         // ==========================================
 
         return response()->json([
             'success' => true,
 
+            // ======================================
+            // VERSION CHECK
+            // ======================================
+
+            'api_version' => 'agent-dashboard-v2',
+
+            // ======================================
+            // LOGGED-IN AGENT
+            // ======================================
+
             'agent' => $agent,
+
+            // ======================================
+            // DASHBOARD CARDS
+            // ======================================
 
             'cards' => [
                 'wallet_balance' => $agent->wallet,
@@ -95,7 +123,15 @@ class DashboardController extends Controller
                 'approved_recharges' => $approvedRecharges,
             ],
 
+            // ======================================
+            // LATEST BOOKINGS
+            // ======================================
+
             'latest_bookings' => $latestBookings,
+
+            // ======================================
+            // LATEST RECHARGES
+            // ======================================
 
             'latest_recharges' => $latestRecharges,
         ]);
