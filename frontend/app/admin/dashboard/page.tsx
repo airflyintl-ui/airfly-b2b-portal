@@ -38,7 +38,6 @@ export default function Dashboard() {
 
         console.log("Dashboard API Response:", data);
 
-        // Token expired / invalid
         if (response.status === 401) {
           localStorage.removeItem("token");
           localStorage.removeItem("agent");
@@ -52,18 +51,15 @@ export default function Dashboard() {
           return;
         }
 
-        // Agent information
         if (data.agent) {
           setAgent(data.agent);
 
-          // Keep latest agent information in localStorage
           localStorage.setItem(
             "agent",
             JSON.stringify(data.agent)
           );
         }
 
-        // Dashboard data
         setDashboard(data);
       } catch (error) {
         console.error("Dashboard Error:", error);
@@ -156,34 +152,30 @@ export default function Dashboard() {
   return (
     <div className="container-fluid py-4">
 
-      {/* ======================================
-          HEADER
-      ====================================== */}
+      {/* HEADER */}
 
       <div className="d-flex justify-content-between align-items-center mb-4">
 
         <div>
           <h2 className="fw-bold mb-1">
-            Welcome, {agent.owner_name}
+            Welcome, {agent.owner_name || "Agent"}
           </h2>
 
           <p className="text-muted mb-0">
-            {agent.agency_name}
+            {agent.agency_name || "-"}
           </p>
         </div>
 
         <div>
-          <span className="badge bg-success px-3 py-2">
-            {agent.status}
+          <span className="badge bg-success px-3 py-2 text-capitalize">
+            {agent.status || "active"}
           </span>
         </div>
 
       </div>
 
 
-      {/* ======================================
-          DASHBOARD CARDS
-      ====================================== */}
+      {/* DASHBOARD CARDS */}
 
       <div className="row g-3">
 
@@ -321,9 +313,7 @@ export default function Dashboard() {
       </div>
 
 
-      {/* ======================================
-          AGENCY INFORMATION
-      ====================================== */}
+      {/* AGENCY INFORMATION */}
 
       <div className="card shadow-sm border-0 mt-4">
 
@@ -336,7 +326,6 @@ export default function Dashboard() {
           <div className="row">
 
             <div className="col-md-6 col-lg-3 mb-3">
-
               <small className="text-muted">
                 Agency Name
               </small>
@@ -344,12 +333,10 @@ export default function Dashboard() {
               <div className="fw-semibold">
                 {agent.agency_name || "-"}
               </div>
-
             </div>
 
 
             <div className="col-md-6 col-lg-3 mb-3">
-
               <small className="text-muted">
                 Owner Name
               </small>
@@ -357,12 +344,10 @@ export default function Dashboard() {
               <div className="fw-semibold">
                 {agent.owner_name || "-"}
               </div>
-
             </div>
 
 
             <div className="col-md-6 col-lg-3 mb-3">
-
               <small className="text-muted">
                 Email
               </small>
@@ -370,12 +355,10 @@ export default function Dashboard() {
               <div className="fw-semibold">
                 {agent.email || "-"}
               </div>
-
             </div>
 
 
             <div className="col-md-6 col-lg-3 mb-3">
-
               <small className="text-muted">
                 Phone
               </small>
@@ -383,7 +366,6 @@ export default function Dashboard() {
               <div className="fw-semibold">
                 {agent.phone || "-"}
               </div>
-
             </div>
 
 
@@ -394,7 +376,7 @@ export default function Dashboard() {
               </small>
 
               <div>
-                <span className="badge bg-success">
+                <span className="badge bg-success text-capitalize">
                   {agent.status || "-"}
                 </span>
               </div>
@@ -408,9 +390,7 @@ export default function Dashboard() {
       </div>
 
 
-      {/* ======================================
-          ACTION BUTTONS
-      ====================================== */}
+      {/* ACTION BUTTONS */}
 
       <div className="mt-4 d-flex gap-2 flex-wrap">
 
@@ -420,7 +400,7 @@ export default function Dashboard() {
             router.push("/search-flight")
           }
         >
-          ✈ Search Flight
+          ✈️ Search Flight
         </button>
 
 
@@ -456,9 +436,7 @@ export default function Dashboard() {
       </div>
 
 
-      {/* ======================================
-          LATEST BOOKINGS
-      ====================================== */}
+      {/* LATEST BOOKINGS */}
 
       <div className="card shadow-sm border-0 mt-5">
 
@@ -501,17 +479,11 @@ export default function Dashboard() {
                 <thead className="table-light">
 
                   <tr>
-
                     <th>ID</th>
-
                     <th>PNR</th>
-
                     <th>Status</th>
-
                     <th>Amount</th>
-
                     <th>Date</th>
-
                   </tr>
 
                 </thead>
@@ -571,9 +543,7 @@ export default function Dashboard() {
       </div>
 
 
-      {/* ======================================
-          LATEST RECHARGES
-      ====================================== */}
+      {/* LATEST RECHARGES */}
 
       <div className="card shadow-sm border-0 mt-4">
 
@@ -616,15 +586,10 @@ export default function Dashboard() {
                 <thead className="table-light">
 
                   <tr>
-
                     <th>ID</th>
-
                     <th>Amount</th>
-
                     <th>Status</th>
-
                     <th>Date</th>
-
                   </tr>
 
                 </thead>
