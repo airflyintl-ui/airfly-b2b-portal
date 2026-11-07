@@ -1,4 +1,3 @@
-const API =
-  "https://airfly-b2b-backend-production.up.railway.app/api";
+const API = "https://airfly-b2b-backend.onrender.com/api";
 
 export default API;
