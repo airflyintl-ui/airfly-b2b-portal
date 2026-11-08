@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import API from "../../services/api";
+import API from "../../../services/api";
 
 export default function Dashboard() {
   const router = useRouter();
