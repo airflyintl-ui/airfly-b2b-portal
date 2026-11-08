@@ -4,28 +4,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "../../../services/api";
 
-export default function Dashboard() {
+export default function AdminDashboard() {
   const router = useRouter();
 
-  const [agent, setAgent] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("admin_token");
 
     if (!token) {
-      router.push("/login");
+      router.replace("/admin/login");
       return;
     }
 
     const loadDashboard = async () => {
       try {
-        setLoading(true);
-        setError("");
-
-        const response = await fetch(`${API}/dashboard`, {
+        const response = await fetch(`${API}/admin/dashboard`, {
           method: "GET",
           headers: {
             Accept: "application/json",
@@ -36,37 +32,21 @@ export default function Dashboard() {
 
         const data = await response.json();
 
-        console.log("Dashboard API Response:", data);
-
         if (response.status === 401) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("agent");
-
-          router.push("/login");
+          localStorage.removeItem("admin_token");
+          router.replace("/admin/login");
           return;
         }
 
         if (!response.ok || !data.success) {
-          setError(data.message || "Unable to load dashboard.");
+          setError(data.message || "Unable to load Admin Dashboard.");
           return;
         }
 
-        if (data.agent) {
-          setAgent(data.agent);
-
-          localStorage.setItem(
-            "agent",
-            JSON.stringify(data.agent)
-          );
-        }
-
         setDashboard(data);
-      } catch (error) {
-        console.error("Dashboard Error:", error);
-
-        setError(
-          "Cannot connect to Laravel API. Please check the backend."
-        );
+      } catch (err) {
+        console.error("Admin Dashboard Error:", err);
+        setError("Cannot connect to the backend. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -75,47 +55,42 @@ export default function Dashboard() {
     loadDashboard();
   }, [router]);
 
-  // ==========================================
-  // LOADING
-  // ==========================================
+  const handleLogout = async () => {
+    const token = localStorage.getItem("admin_token");
+
+    try {
+      if (token) {
+        await fetch(`${API}/admin/logout`, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Admin Logout Error:", err);
+    } finally {
+      localStorage.removeItem("admin_token");
+      router.replace("/admin/login");
+    }
+  };
 
   if (loading) {
     return (
-      <div className="container py-5">
-        <div className="text-center">
-          <div
-            className="spinner-border text-primary"
-            role="status"
-          >
-            <span className="visually-hidden">
-              Loading...
-            </span>
-          </div>
-
-          <p className="mt-3">
-            Loading dashboard...
-          </p>
-        </div>
+      <div className="container py-5 text-center">
+        <div className="spinner-border text-primary" />
+        <p className="mt-3">Loading Admin Dashboard...</p>
       </div>
     );
   }
-
-  // ==========================================
-  // ERROR
-  // ==========================================
 
   if (error) {
     return (
       <div className="container py-5">
         <div className="alert alert-danger">
-          <h5 className="fw-bold">
-            Dashboard Error
-          </h5>
-
-          <p className="mb-3">
-            {error}
-          </p>
-
+          <h5>Dashboard Error</h5>
+          <p>{error}</p>
           <button
             className="btn btn-primary"
             onClick={() => window.location.reload()}
@@ -127,533 +102,193 @@ export default function Dashboard() {
     );
   }
 
-  if (!agent || !dashboard) {
-    return (
-      <div className="container py-5">
-        <div className="alert alert-warning">
-          No dashboard data found.
-        </div>
-      </div>
-    );
-  }
+  if (!dashboard) return null;
 
-  const cards = dashboard.cards || {};
+  const cards = [
+    {
+      title: "Total Wallet",
+      value: `৳ ${Number(dashboard.wallet || 0).toLocaleString("en-BD")}`,
+      icon: "💰",
+      color: "success",
+    },
+    {
+      title: "Total Agents",
+      value: dashboard.total_agents ?? 0,
+      icon: "👥",
+      color: "primary",
+    },
+    {
+      title: "Total Bookings",
+      value: dashboard.total_bookings ?? 0,
+      icon: "✈️",
+      color: "info",
+    },
+    {
+      title: "Confirmed Bookings",
+      value: dashboard.confirmed_bookings ?? 0,
+      icon: "✅",
+      color: "success",
+    },
+    {
+      title: "Cancelled Bookings",
+      value: dashboard.cancelled_bookings ?? 0,
+      icon: "❌",
+      color: "danger",
+    },
+    {
+      title: "Pending Recharge",
+      value: dashboard.pending_recharge ?? 0,
+      icon: "⏳",
+      color: "warning",
+    },
+  ];
 
-  const latestBookings =
-    dashboard.latest_bookings || [];
-
-  const latestRecharges =
-    dashboard.latest_recharges || [];
-
-  // ==========================================
-  // DASHBOARD
-  // ==========================================
+  const recentBookings = dashboard.recent_bookings || [];
 
   return (
     <div className="container-fluid py-4">
-
-      {/* HEADER */}
-
-      <div className="d-flex justify-content-between align-items-center mb-4">
-
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-          <h2 className="fw-bold mb-1">
-            Welcome, {agent.owner_name || "Agent"}
-          </h2>
-
+          <h2 className="fw-bold mb-1">Admin Dashboard</h2>
           <p className="text-muted mb-0">
-            {agent.agency_name || "-"}
+            AIR FLY INTERNATIONAL - B2B Management
           </p>
         </div>
 
-        <div>
-          <span className="badge bg-success px-3 py-2 text-capitalize">
-            {agent.status || "active"}
-          </span>
-        </div>
-
+        <button
+          className="btn btn-outline-danger"
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
       </div>
-
-
-      {/* DASHBOARD CARDS */}
 
       <div className="row g-3">
-
-        {/* WALLET */}
-
-        <div className="col-xl-3 col-md-6">
-
-          <div className="card shadow-sm border-0 h-100">
-
-            <div className="card-body">
-
-              <div className="d-flex justify-content-between">
-
-                <div>
-                  <h6 className="text-muted mb-2">
-                    Wallet Balance
-                  </h6>
-
-                  <h3 className="fw-bold text-success mb-0">
-                    ৳ {cards.wallet_balance ?? "0.00"}
-                  </h3>
+        {cards.map((card) => (
+          <div className="col-xl-4 col-md-6" key={card.title}>
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 className="text-muted mb-2">{card.title}</h6>
+                    <h3 className={`fw-bold text-${card.color} mb-0`}>
+                      {card.value}
+                    </h3>
+                  </div>
+                  <div className="fs-1">{card.icon}</div>
                 </div>
-
-                <div className="fs-2">
-                  💰
-                </div>
-
               </div>
-
             </div>
-
           </div>
-
-        </div>
-
-
-        {/* BOOKINGS */}
-
-        <div className="col-xl-3 col-md-6">
-
-          <div className="card shadow-sm border-0 h-100">
-
-            <div className="card-body">
-
-              <div className="d-flex justify-content-between">
-
-                <div>
-                  <h6 className="text-muted mb-2">
-                    My Bookings
-                  </h6>
-
-                  <h3 className="fw-bold mb-0">
-                    {cards.total_bookings ?? 0}
-                  </h3>
-                </div>
-
-                <div className="fs-2">
-                  ✈️
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        {/* PENDING RECHARGES */}
-
-        <div className="col-xl-3 col-md-6">
-
-          <div className="card shadow-sm border-0 h-100">
-
-            <div className="card-body">
-
-              <div className="d-flex justify-content-between">
-
-                <div>
-                  <h6 className="text-muted mb-2">
-                    Pending Recharge
-                  </h6>
-
-                  <h3 className="fw-bold text-warning mb-0">
-                    {cards.pending_recharges ?? 0}
-                  </h3>
-                </div>
-
-                <div className="fs-2">
-                  ⏳
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        {/* APPROVED RECHARGES */}
-
-        <div className="col-xl-3 col-md-6">
-
-          <div className="card shadow-sm border-0 h-100">
-
-            <div className="card-body">
-
-              <div className="d-flex justify-content-between">
-
-                <div>
-                  <h6 className="text-muted mb-2">
-                    Approved Recharge
-                  </h6>
-
-                  <h3 className="fw-bold text-primary mb-0">
-                    {cards.approved_recharges ?? 0}
-                  </h3>
-                </div>
-
-                <div className="fs-2">
-                  ✅
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
+        ))}
       </div>
-
-
-      {/* AGENCY INFORMATION */}
 
       <div className="card shadow-sm border-0 mt-4">
-
         <div className="card-body">
-
-          <h5 className="fw-bold mb-4">
-            Agency Information
-          </h5>
-
-          <div className="row">
-
-            <div className="col-md-6 col-lg-3 mb-3">
-              <small className="text-muted">
-                Agency Name
-              </small>
-
-              <div className="fw-semibold">
-                {agent.agency_name || "-"}
-              </div>
-            </div>
-
-
-            <div className="col-md-6 col-lg-3 mb-3">
-              <small className="text-muted">
-                Owner Name
-              </small>
-
-              <div className="fw-semibold">
-                {agent.owner_name || "-"}
-              </div>
-            </div>
-
-
-            <div className="col-md-6 col-lg-3 mb-3">
-              <small className="text-muted">
-                Email
-              </small>
-
-              <div className="fw-semibold">
-                {agent.email || "-"}
-              </div>
-            </div>
-
-
-            <div className="col-md-6 col-lg-3 mb-3">
-              <small className="text-muted">
-                Phone
-              </small>
-
-              <div className="fw-semibold">
-                {agent.phone || "-"}
-              </div>
-            </div>
-
-
-            <div className="col-md-6 col-lg-3">
-
-              <small className="text-muted">
-                Account Status
-              </small>
-
-              <div>
-                <span className="badge bg-success text-capitalize">
-                  {agent.status || "-"}
-                </span>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      {/* ACTION BUTTONS */}
-
-      <div className="mt-4 d-flex gap-2 flex-wrap">
-
-        <button
-          className="btn btn-primary"
-          onClick={() =>
-            router.push("/search-flight")
-          }
-        >
-          ✈️ Search Flight
-        </button>
-
-
-        <button
-          className="btn btn-success"
-          onClick={() =>
-            router.push("/bookings")
-          }
-        >
-          📋 My Bookings
-        </button>
-
-
-        <button
-          className="btn btn-warning"
-          onClick={() =>
-            router.push("/wallet/statement")
-          }
-        >
-          💰 Wallet Statement
-        </button>
-
-
-        <button
-          className="btn btn-info text-white"
-          onClick={() =>
-            router.push("/recharge")
-          }
-        >
-          💳 Recharge
-        </button>
-
-      </div>
-
-
-      {/* LATEST BOOKINGS */}
-
-      <div className="card shadow-sm border-0 mt-5">
-
-        <div className="card-body">
-
           <div className="d-flex justify-content-between align-items-center mb-3">
-
-            <h5 className="fw-bold mb-0">
-              Latest Bookings
-            </h5>
-
-            <button
-              className="btn btn-sm btn-outline-primary"
-              onClick={() =>
-                router.push("/bookings")
-              }
-            >
-              View All
-            </button>
-
+            <h5 className="fw-bold mb-0">Recent Bookings</h5>
+            <span className="badge bg-primary">
+              {recentBookings.length} Bookings
+            </span>
           </div>
 
-
-          {latestBookings.length === 0 ? (
-
-            <div className="text-center py-4">
-
-              <p className="text-muted mb-0">
-                No bookings found.
-              </p>
-
+          {recentBookings.length === 0 ? (
+            <div className="text-center py-4 text-muted">
+              No bookings found.
             </div>
-
           ) : (
-
             <div className="table-responsive">
-
               <table className="table table-hover align-middle">
-
                 <thead className="table-light">
-
                   <tr>
                     <th>ID</th>
                     <th>PNR</th>
-                    <th>Status</th>
+                    <th>Passenger</th>
+                    <th>Ticket Number</th>
                     <th>Amount</th>
+                    <th>Payment</th>
+                    <th>Booking Status</th>
                     <th>Date</th>
                   </tr>
-
                 </thead>
 
                 <tbody>
-
-                  {latestBookings.map(
-                    (booking: any) => (
-
-                      <tr key={booking.id}>
-
-                        <td>
-                          {booking.id}
-                        </td>
-
-                        <td className="fw-semibold">
-                          {booking.pnr || "-"}
-                        </td>
-
-                        <td>
-
-                          <span className="badge bg-secondary">
-                            {booking.status || "-"}
-                          </span>
-
-                        </td>
-
-                        <td>
-                          ৳ {booking.amount ?? "0.00"}
-                        </td>
-
-                        <td>
-
-                          {booking.created_at
-                            ? new Date(
-                                booking.created_at
-                              ).toLocaleDateString()
-                            : "-"}
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
+                  {recentBookings.map((booking: any) => (
+                    <tr key={booking.id}>
+                      <td>{booking.id}</td>
+                      <td className="fw-semibold">
+                        {booking.pnr || "-"}
+                      </td>
+                      <td>{booking.passenger_name || "-"}</td>
+                      <td>{booking.ticket_number || "-"}</td>
+                      <td>
+                        ৳ {Number(booking.total_amount || 0).toLocaleString("en-BD")}
+                      </td>
+                      <td>{booking.payment_status || "-"}</td>
+                      <td>
+                        <span
+                          className={
+                            booking.booking_status === "Confirmed"
+                              ? "badge bg-success"
+                              : booking.booking_status === "Cancelled"
+                              ? "badge bg-danger"
+                              : "badge bg-warning text-dark"
+                          }
+                        >
+                          {booking.booking_status || "-"}
+                        </span>
+                      </td>
+                      <td>
+                        {booking.created_at
+                          ? new Date(booking.created_at).toLocaleDateString()
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
-
               </table>
-
             </div>
-
           )}
-
         </div>
-
       </div>
 
-
-      {/* LATEST RECHARGES */}
-
-      <div className="card shadow-sm border-0 mt-4">
-
-        <div className="card-body">
-
-          <div className="d-flex justify-content-between align-items-center mb-3">
-
-            <h5 className="fw-bold mb-0">
-              Latest Recharges
-            </h5>
-
-            <button
-              className="btn btn-sm btn-outline-primary"
-              onClick={() =>
-                router.push("/recharge")
-              }
-            >
-              View All
-            </button>
-
-          </div>
-
-
-          {latestRecharges.length === 0 ? (
-
-            <div className="text-center py-4">
-
-              <p className="text-muted mb-0">
-                No recharge found.
-              </p>
-
-            </div>
-
-          ) : (
-
-            <div className="table-responsive">
-
-              <table className="table table-hover align-middle">
-
-                <thead className="table-light">
-
-                  <tr>
-                    <th>ID</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {latestRecharges.map(
-                    (recharge: any) => (
-
-                      <tr key={recharge.id}>
-
-                        <td>
-                          {recharge.id}
-                        </td>
-
-                        <td className="fw-semibold">
-                          ৳ {recharge.amount ?? "0.00"}
-                        </td>
-
-                        <td>
-
-                          <span
-                            className={
-                              recharge.status ===
-                              "Approved"
-                                ? "badge bg-success"
-                                : recharge.status ===
-                                  "Pending"
-                                ? "badge bg-warning text-dark"
-                                : "badge bg-secondary"
-                            }
-                          >
-                            {recharge.status || "-"}
-                          </span>
-
-                        </td>
-
-                        <td>
-
-                          {recharge.created_at
-                            ? new Date(
-                                recharge.created_at
-                              ).toLocaleDateString()
-                            : "-"}
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          )}
-
+      <div className="row g-3 mt-3">
+        <div className="col-md-3">
+          <button
+            className="btn btn-outline-primary w-100"
+            onClick={() => router.push("/admin/airlines")}
+          >
+            ✈️ Airlines
+          </button>
         </div>
 
-      </div>
+        <div className="col-md-3">
+          <button
+            className="btn btn-outline-primary w-100"
+            onClick={() => router.push("/admin/flights")}
+          >
+            🛫 Flights
+          </button>
+        </div>
 
+        <div className="col-md-3">
+          <button
+            className="btn btn-outline-primary w-100"
+            onClick={() => router.push("/admin/bookings")}
+          >
+            📋 Bookings
+          </button>
+        </div>
+
+        <div className="col-md-3">
+          <button
+            className="btn btn-outline-primary w-100"
+            onClick={() => router.push("/admin/recharges")}
+          >
+            💳 Recharges
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
