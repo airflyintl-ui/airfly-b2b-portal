@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,6 +12,11 @@ export default function AdminAgents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState<number | null>(null);
+
+  const [resetAgent, setResetAgent] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const loadAgents = async () => {
     const token = localStorage.getItem("admin_token");
@@ -108,6 +114,75 @@ export default function AdminAgents() {
       alert("Cannot connect to backend.");
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetAgent) return;
+
+    if (newPassword.length < 8) {
+      alert("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
+
+    const token = localStorage.getItem("admin_token");
+
+    if (!token) {
+      router.replace("/admin/login");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to reset password for ${resetAgent.email}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setResetting(true);
+
+      const response = await fetch(
+        `${API}/agents/${resetAgent.id}/reset-password`,
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            password: newPassword,
+            password_confirmation: confirmPassword,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        alert(
+          data.message ||
+          data.errors?.password?.[0] ||
+          "Unable to reset password."
+        );
+        return;
+      }
+
+      alert("Agent password reset successfully.");
+
+      setResetAgent(null);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      console.error(err);
+      alert("Cannot connect to backend.");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -245,6 +320,17 @@ export default function AdminAgents() {
                           >
                             Reject
                           </button>
+
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => {
+                              setResetAgent(agent);
+                              setNewPassword("");
+                              setConfirmPassword("");
+                            }}
+                          >
+                            Reset Password
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -255,6 +341,95 @@ export default function AdminAgents() {
           )}
         </div>
       </div>
+
+      {resetAgent && (
+        <div
+          className="modal d-block"
+          tabIndex={-1}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">
+                  Reset Agent Password
+                </h5>
+
+                <button
+                  type="button"
+                  className="btn-close"
+                  disabled={resetting}
+                  onClick={() => setResetAgent(null)}
+                />
+              </div>
+
+              <div className="modal-body">
+                <p>
+                  Agent: <strong>{resetAgent.agency_name}</strong>
+                </p>
+
+                <p>
+                  Email: <strong>{resetAgent.email}</strong>
+                </p>
+
+                <label className="form-label fw-semibold">
+                  New Password
+                </label>
+
+                <input
+                  type="password"
+                  className="form-control mb-3"
+                  placeholder="Enter new password (minimum 8 characters)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+
+                <label className="form-label fw-semibold">
+                  Confirm New Password
+                </label>
+
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+
+                <small className="text-muted d-block mt-2">
+                  Password must contain at least 8 characters.
+                </small>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  disabled={resetting}
+                  onClick={() => setResetAgent(null)}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  disabled={
+                    resetting ||
+                    newPassword.length < 8 ||
+                    newPassword !== confirmPassword
+                  }
+                  onClick={handleResetPassword}
+                >
+                  {resetting ? "Resetting..." : "Save New Password"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
