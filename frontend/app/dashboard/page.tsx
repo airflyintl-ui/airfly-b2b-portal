@@ -10,12 +10,42 @@ export default function Dashboard() {
   const [agent, setAgent] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
+  // LOGOUT FUNCTION
+  const handleLogout = async () => {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+
+    const token = localStorage.getItem("token");
+
+    try {
+      if (token) {
+        await fetch(`${API}/logout`, {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Logout Error:", error);
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("agent");
+
+      router.replace("/login");
+    }
+  };
+
+  // LOAD DASHBOARD
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
 
@@ -37,7 +67,7 @@ export default function Dashboard() {
           localStorage.removeItem("token");
           localStorage.removeItem("agent");
 
-          router.push("/login");
+          router.replace("/login");
           return;
         }
 
@@ -46,12 +76,10 @@ export default function Dashboard() {
           return;
         }
 
-        // Get saved agent information
         const savedAgent = JSON.parse(
           localStorage.getItem("agent") || "null"
         );
 
-        // Combine API and saved agent information
         const agentData = {
           ...savedAgent,
           ...data.agent,
@@ -94,26 +122,34 @@ export default function Dashboard() {
   }
 
   const cards = dashboard.cards || {};
-
-  const latestBookings =
-    dashboard.latest_bookings || [];
-
-  const latestRecharges =
-    dashboard.latest_recharges || [];
+  const latestBookings = dashboard.latest_bookings || [];
+  const latestRecharges = dashboard.latest_recharges || [];
 
   return (
     <div className="container py-5">
 
       {/* HEADER */}
 
-      <div className="mb-4">
-        <h2 className="fw-bold">
-          Welcome, {agent.owner_name}
-        </h2>
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
 
-        <p className="text-muted mb-0">
-          {agent.agency_name}
-        </p>
+        <div>
+          <h2 className="fw-bold">
+            Welcome, {agent.owner_name}
+          </h2>
+
+          <p className="text-muted mb-0">
+            {agent.agency_name}
+          </p>
+        </div>
+
+        <button
+          className="btn btn-danger"
+          onClick={handleLogout}
+          disabled={loggingOut}
+        >
+          {loggingOut ? "Logging out..." : "Logout"}
+        </button>
+
       </div>
 
       {/* DASHBOARD CARDS */}
