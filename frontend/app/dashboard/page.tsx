@@ -36,6 +36,7 @@ export default function Dashboard() {
         if (response.status === 401) {
           localStorage.removeItem("token");
           localStorage.removeItem("agent");
+
           router.push("/login");
           return;
         }
@@ -45,14 +46,33 @@ export default function Dashboard() {
           return;
         }
 
-        setAgent(data.agent);
+        // Get saved agent information
+        const savedAgent = JSON.parse(
+          localStorage.getItem("agent") || "null"
+        );
+
+        // Combine API and saved agent information
+        const agentData = {
+          ...savedAgent,
+          ...data.agent,
+          mobile:
+            data.agent?.mobile ||
+            data.agent?.phone ||
+            savedAgent?.mobile ||
+            savedAgent?.phone ||
+            "",
+        };
+
+        setAgent(agentData);
         setDashboard(data);
+
       } catch (error) {
         console.error("Dashboard Error:", error);
 
         alert(
           "Cannot connect to Laravel API.\n\nPlease check the backend."
         );
+
       } finally {
         setLoading(false);
       }
@@ -74,13 +94,18 @@ export default function Dashboard() {
   }
 
   const cards = dashboard.cards || {};
-  const latestBookings = dashboard.latest_bookings || [];
-  const latestRecharges = dashboard.latest_recharges || [];
+
+  const latestBookings =
+    dashboard.latest_bookings || [];
+
+  const latestRecharges =
+    dashboard.latest_recharges || [];
 
   return (
     <div className="container py-5">
 
       {/* HEADER */}
+
       <div className="mb-4">
         <h2 className="fw-bold">
           Welcome, {agent.owner_name}
@@ -92,56 +117,87 @@ export default function Dashboard() {
       </div>
 
       {/* DASHBOARD CARDS */}
+
       <div className="row">
+
+        {/* WALLET */}
 
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-              <h6 className="text-muted">Wallet Balance</h6>
+
+              <h6 className="text-muted">
+                Wallet Balance
+              </h6>
+
               <h3 className="fw-bold text-success">
                 ৳ {cards.wallet_balance ?? "0.00"}
               </h3>
+
             </div>
           </div>
         </div>
 
+        {/* BOOKINGS */}
+
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-              <h6 className="text-muted">My Bookings</h6>
+
+              <h6 className="text-muted">
+                My Bookings
+              </h6>
+
               <h3 className="fw-bold">
                 {cards.total_bookings ?? 0}
               </h3>
+
             </div>
           </div>
         </div>
 
+        {/* PENDING RECHARGES */}
+
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-              <h6 className="text-muted">Pending Recharge</h6>
+
+              <h6 className="text-muted">
+                Pending Recharge
+              </h6>
+
               <h3 className="fw-bold text-warning">
                 {cards.pending_recharges ?? 0}
               </h3>
+
             </div>
           </div>
         </div>
 
+        {/* APPROVED RECHARGES */}
+
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-              <h6 className="text-muted">Approved Recharge</h6>
+
+              <h6 className="text-muted">
+                Approved Recharge
+              </h6>
+
               <h3 className="fw-bold text-primary">
                 {cards.approved_recharges ?? 0}
               </h3>
+
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* AGENT INFORMATION */}
+      {/* AGENCY INFORMATION */}
+
       <div className="card shadow-sm border-0 mt-4">
+
         <div className="card-body">
 
           <h5 className="fw-bold mb-3">
@@ -167,21 +223,28 @@ export default function Dashboard() {
 
             <div className="col-md-6 mb-2">
               <strong>Phone:</strong>{" "}
-              {agent.mobile || agent.phone || "-"}
+              {agent.mobile ||
+                agent.phone ||
+                "-"}
             </div>
 
             <div className="col-md-6 mb-2">
               <strong>Status:</strong>{" "}
+
               <span className="badge bg-success">
                 {agent.status || "-"}
               </span>
+
             </div>
 
           </div>
+
         </div>
+
       </div>
 
       {/* ACTION BUTTONS */}
+
       <div className="mt-4 d-flex gap-3 flex-wrap">
 
         <button
@@ -215,7 +278,9 @@ export default function Dashboard() {
       </div>
 
       {/* LATEST BOOKINGS */}
+
       <div className="card shadow-sm border-0 mt-5">
+
         <div className="card-body">
 
           <h5 className="fw-bold mb-3">
@@ -223,12 +288,15 @@ export default function Dashboard() {
           </h5>
 
           {latestBookings.length === 0 ? (
+
             <p className="text-muted mb-0">
               No bookings found.
             </p>
+
           ) : (
 
             <div className="table-responsive">
+
               <table className="table table-bordered">
 
                 <thead>
@@ -242,38 +310,53 @@ export default function Dashboard() {
                 </thead>
 
                 <tbody>
-                  {latestBookings.map((booking: any) => (
-                    <tr key={booking.id}>
 
-                      <td>{booking.id}</td>
+                  {latestBookings.map(
+                    (booking: any) => (
 
-                      <td>{booking.pnr || "-"}</td>
+                      <tr key={booking.id}>
 
-                      <td>
-                        {booking.booking_status || "-"}
-                      </td>
+                        <td>
+                          {booking.id}
+                        </td>
 
-                      <td>
-                        {booking.payment_status || "-"}
-                      </td>
+                        <td>
+                          {booking.pnr || "-"}
+                        </td>
 
-                      <td>
-                        ৳ {booking.total_amount ?? "0.00"}
-                      </td>
+                        <td>
+                          {booking.booking_status || "-"}
+                        </td>
 
-                    </tr>
-                  ))}
+                        <td>
+                          {booking.payment_status || "-"}
+                        </td>
+
+                        <td>
+                          ৳ {booking.total_amount ?? "0.00"}
+                        </td>
+
+                      </tr>
+
+                    )
+                  )}
+
                 </tbody>
 
               </table>
+
             </div>
+
           )}
 
         </div>
+
       </div>
 
       {/* LATEST RECHARGES */}
+
       <div className="card shadow-sm border-0 mt-4">
+
         <div className="card-body">
 
           <h5 className="fw-bold mb-3">
@@ -281,12 +364,15 @@ export default function Dashboard() {
           </h5>
 
           {latestRecharges.length === 0 ? (
+
             <p className="text-muted mb-0">
               No recharge found.
             </p>
+
           ) : (
 
             <div className="table-responsive">
+
               <table className="table table-bordered">
 
                 <thead>
@@ -299,34 +385,47 @@ export default function Dashboard() {
                 </thead>
 
                 <tbody>
-                  {latestRecharges.map((recharge: any) => (
-                    <tr key={recharge.id}>
 
-                      <td>{recharge.id}</td>
+                  {latestRecharges.map(
+                    (recharge: any) => (
 
-                      <td>
-                        ৳ {recharge.amount ?? "0.00"}
-                      </td>
+                      <tr key={recharge.id}>
 
-                      <td>{recharge.status || "-"}</td>
+                        <td>
+                          {recharge.id}
+                        </td>
 
-                      <td>
-                        {recharge.created_at
-                          ? new Date(
-                              recharge.created_at
-                            ).toLocaleDateString()
-                          : "-"}
-                      </td>
+                        <td>
+                          ৳ {recharge.amount ?? "0.00"}
+                        </td>
 
-                    </tr>
-                  ))}
+                        <td>
+                          {recharge.status || "-"}
+                        </td>
+
+                        <td>
+                          {recharge.created_at
+                            ? new Date(
+                                recharge.created_at
+                              ).toLocaleDateString()
+                            : "-"}
+                        </td>
+
+                      </tr>
+
+                    )
+                  )}
+
                 </tbody>
 
               </table>
+
             </div>
+
           )}
 
         </div>
+
       </div>
 
     </div>
