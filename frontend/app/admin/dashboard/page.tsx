@@ -253,7 +253,16 @@ export default function AdminDashboard() {
       </div>
 
       <div className="row g-3 mt-3">
-        <div className="col-md-3">
+        <div className="col">
+          <button
+            className="btn btn-outline-primary w-100"
+            onClick={() => router.push("/admin/agents")}
+          >
+            👥 Agents
+          </button>
+        </div>
+
+        <div className="col">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/airlines")}
@@ -262,7 +271,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="col-md-3">
+        <div className="col">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/flights")}
@@ -271,7 +280,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="col-md-3">
+        <div className="col">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/bookings")}
@@ -280,7 +289,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="col-md-3">
+        <div className="col">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/recharges")}
