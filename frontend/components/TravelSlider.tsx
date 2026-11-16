@@ -6,32 +6,20 @@ const slides = [
   {
     title: "EXPLORE THE WORLD",
     subtitle: "Your Journey Begins With Us",
-    description: "Domestic & International Flight Booking",
-    image: "/images/airline.jpg",
+    description: "AIR FLY INTERNATIONAL - Your Trusted Travel Partner",
+    image: "/images/airlines/poster1.jpg",
   },
   {
-    title: "US-BANGLA AIRLINES",
-    subtitle: "Fly With Comfort",
-    description: "Book Your Domestic & International Flights",
-    image: "/images/us-bangla.jpg",
+    title: "DISCOVER AMAZING DESTINATIONS",
+    subtitle: "Make Your Travel Dreams Come True",
+    description: "International Travel & Visa Assistance",
+    image: "/images/airlines/poster2.jpg",
   },
   {
-    title: "AIR ARABIA",
-    subtitle: "Travel Beyond Boundaries",
-    description: "International Flight Booking",
-    image: "/images/air-arabia.jpg",
-  },
-  {
-    title: "DISCOVER CHINA",
-    subtitle: "Explore Amazing Destinations",
-    description: "China Visa & Travel Assistance",
-    image: "/images/china.jpg",
-  },
-  {
-    title: "WELCOME TO BANGKOK",
-    subtitle: "Your Next Journey Awaits",
-    description: "Thailand Visa & Travel Assistance",
-    image: "/images/bangkok.jpg",
+    title: "YOUR NEXT JOURNEY STARTS HERE",
+    subtitle: "Travel Without Borders",
+    description: "Flight Booking, Visa Processing & Travel Support",
+    image: "/images/airlines/poster3.jpg",
   },
 ];
 
@@ -62,24 +50,25 @@ export default function TravelSlider() {
     <section className="px-3 py-5 md:px-8">
       <div className="relative mx-auto max-w-7xl overflow-hidden rounded-2xl shadow-xl">
 
-        {/* Poster Image */}
+        {/* Poster */}
         <img
+          key={slide.image}
           src={slide.image}
           alt={slide.title}
           className="h-[250px] w-full object-cover sm:h-[350px] md:h-[480px]"
         />
 
         {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
+        <div className="absolute inset-0 bg-black/30" />
 
         {/* Logo */}
         <img
           src="/images/logo.jpg"
-          alt="Air Fly International Logo"
-          className="absolute left-5 top-5 z-10 h-12 w-12 rounded-full bg-white object-contain p-1 md:left-10 md:top-8 md:h-16 md:w-16"
+          alt="Air Fly International"
+          className="absolute left-5 top-5 z-10 h-12 w-12 rounded-full bg-white object-contain p-1 md:h-16 md:w-16"
         />
 
-        {/* Poster Text */}
+        {/* Text */}
         <div className="absolute inset-0 z-10 flex items-center px-10 md:px-20">
           <div className="max-w-2xl text-white">
 
@@ -95,13 +84,13 @@ export default function TravelSlider() {
               {slide.subtitle}
             </h3>
 
-            <p className="mb-5 text-sm text-white md:text-lg">
+            <p className="mb-5 text-sm md:text-lg">
               {slide.description}
             </p>
 
             <a
               href="#contact"
-              className="inline-block rounded-lg bg-yellow-400 px-5 py-2 font-bold text-gray-900 hover:bg-yellow-300 md:px-7 md:py-3"
+              className="inline-block rounded-lg bg-yellow-400 px-5 py-2 font-bold text-gray-900 hover:bg-yellow-300"
             >
               Contact Us
             </a>
@@ -113,7 +102,7 @@ export default function TravelSlider() {
         <button
           onClick={previous}
           aria-label="Previous poster"
-          className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-2xl text-white hover:bg-black"
+          className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-2xl text-white"
         >
           ‹
         </button>
@@ -122,16 +111,16 @@ export default function TravelSlider() {
         <button
           onClick={next}
           aria-label="Next poster"
-          className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-2xl text-white hover:bg-black"
+          className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-2xl text-white"
         >
           ›
         </button>
 
-        {/* Slide Dots */}
+        {/* Dots */}
         <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
           {slides.map((item, index) => (
             <button
-              key={item.title}
+              key={item.image}
               onClick={() => setActive(index)}
               aria-label={`Show poster ${index + 1}`}
               className={`h-2.5 rounded-full ${
