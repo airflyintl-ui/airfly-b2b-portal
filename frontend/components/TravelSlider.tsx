@@ -47,56 +47,16 @@ export default function TravelSlider() {
   const slide = slides[active];
 
   return (
-    <section className="px-3 py-5 md:px-8">
-      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-2xl shadow-xl">
+    <section className="w-full px-2 py-3 md:px-8 md:py-5">
+      <div className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-xl shadow-xl">
 
-        {/* Poster */}
+        {/* Full Poster Image - No Extra Logo */}
         <img
           key={slide.image}
           src={slide.image}
           alt={slide.title}
-          className="h-[250px] w-full object-cover sm:h-[350px] md:h-[480px]"
+          className="block h-auto w-full object-contain"
         />
-
-        {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-black/30" />
-
-        {/* Logo */}
-        <img
-          src="/images/logo.jpg"
-          alt="Air Fly International"
-          className="absolute left-5 top-5 z-10 h-12 w-12 rounded-full bg-white object-contain p-1 md:h-16 md:w-16"
-        />
-
-        {/* Text */}
-        <div className="absolute inset-0 z-10 flex items-center px-10 md:px-20">
-          <div className="max-w-2xl text-white">
-
-            <p className="mb-3 text-xs font-bold tracking-widest text-yellow-300 md:text-base">
-              AIR FLY INTERNATIONAL
-            </p>
-
-            <h2 className="mb-3 text-2xl font-extrabold md:text-5xl">
-              {slide.title}
-            </h2>
-
-            <h3 className="mb-2 text-base font-semibold md:text-2xl">
-              {slide.subtitle}
-            </h3>
-
-            <p className="mb-5 text-sm md:text-lg">
-              {slide.description}
-            </p>
-
-            <a
-              href="#contact"
-              className="inline-block rounded-lg bg-yellow-400 px-5 py-2 font-bold text-gray-900 hover:bg-yellow-300"
-            >
-              Contact Us
-            </a>
-
-          </div>
-        </div>
 
         {/* Previous */}
         <button
@@ -116,8 +76,8 @@ export default function TravelSlider() {
           ›
         </button>
 
-        {/* Dots */}
-        <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+        {/* Slide Dots */}
+        <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2">
           {slides.map((item, index) => (
             <button
               key={item.image}
