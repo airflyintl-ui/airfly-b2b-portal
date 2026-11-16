@@ -51,12 +51,19 @@ export default function TravelSlider() {
       <div className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-xl shadow-xl">
 
         {/* Full Poster Image - No Extra Logo */}
-        <img
-          key={slide.image}
-          src={slide.image}
-          alt={slide.title}
-          className="block h-auto w-full object-contain"
-        />
+        <div className="w-full bg-gray-100 flex items-center justify-center">
+  <img
+    key={slide.image}
+    src={slide.image}
+    alt={slide.title}
+    className="block w-full h-auto max-h-none object-contain"
+    style={{
+      width: "100%",
+      height: "auto",
+      objectFit: "contain",
+    }}
+  />
+</div>
 
         {/* Previous */}
         <button
