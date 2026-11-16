@@ -11,17 +11,14 @@ export default function Register() {
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [tradeLicense, setTradeLicense] = useState("");
   const [password, setPassword] = useState("");
-  const [passwordConfirmation, setPasswordConfirmation] =
-    useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
 
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    // =========================
-    // VALIDATION
-    // =========================
-
     if (!agencyName.trim()) {
       alert("Please enter agency name");
       return;
@@ -39,6 +36,16 @@ export default function Register() {
 
     if (!phone.trim()) {
       alert("Please enter phone number");
+      return;
+    }
+
+    if (!address.trim()) {
+      alert("Please enter agency address");
+      return;
+    }
+
+    if (!tradeLicense.trim()) {
+      alert("Please enter trade license number");
       return;
     }
 
@@ -72,17 +79,17 @@ export default function Register() {
 
       const response = await fetch(registerURL, {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-
         body: JSON.stringify({
           agency_name: agencyName.trim(),
           owner_name: ownerName.trim(),
           email: email.trim(),
           phone: phone.trim(),
+          address: address.trim(),
+          trade_license: tradeLicense.trim(),
           password: password,
           password_confirmation: passwordConfirmation,
         }),
@@ -91,7 +98,6 @@ export default function Register() {
       console.log("HTTP Status:", response.status);
 
       const responseText = await response.text();
-
       console.log("Laravel Response:", responseText);
 
       let data;
@@ -100,65 +106,40 @@ export default function Register() {
         data = JSON.parse(responseText);
       } catch (jsonError) {
         console.error("Invalid JSON:", jsonError);
-
-        alert(
-          `Laravel API returned an invalid response.\nHTTP Status: ${response.status}`
-        );
-
+        alert(`Invalid Laravel response. HTTP Status: ${response.status}`);
         return;
       }
 
-      // =========================
-      // SUCCESS
-      // =========================
-
       if (response.ok && data.success) {
         alert(
-          "Agency Registration Successful!\n\nPlease login with your email and password."
+          "Agency Registration Successful!\n\nPlease wait for admin approval."
         );
 
-        // Clear form
         setAgencyName("");
         setOwnerName("");
         setEmail("");
         setPhone("");
+        setAddress("");
+        setTradeLicense("");
         setPassword("");
         setPasswordConfirmation("");
 
-        // Go to login
         router.push("/login");
-
         return;
       }
-
-      // =========================
-      // VALIDATION ERROR
-      // =========================
 
       if (data.errors) {
         let errorMessage = "";
 
         Object.keys(data.errors).forEach((field) => {
-          errorMessage +=
-            data.errors[field]?.[0] || "";
-          errorMessage += "\n";
+          errorMessage += `${field}: ${data.errors[field]?.[0] || "Invalid value"}\n`;
         });
 
-        alert(
-          errorMessage || "Registration failed"
-        );
-
+        alert(errorMessage || "Registration failed");
         return;
       }
 
-      // =========================
-      // GENERAL ERROR
-      // =========================
-
-      alert(
-        data.message ||
-          "Registration failed. Please try again."
-      );
+      alert(data.message || "Registration failed. Please try again.");
     } catch (error) {
       console.error("REGISTER ERROR:", error);
 
@@ -188,13 +169,7 @@ export default function Register() {
         }}
       >
         <div className="card-body p-4">
-
-          {/* =========================
-              HEADER
-          ========================= */}
-
           <div className="text-center mb-4">
-
             <img
               src="/images/logo.jpg"
               alt="Air Fly International"
@@ -213,164 +188,126 @@ export default function Register() {
             <p className="text-muted mb-0">
               New Agent Registration
             </p>
-
           </div>
 
-
-          {/* =========================
-              AGENCY NAME
-          ========================= */}
-
           <div className="mb-3">
-
             <label className="form-label fw-semibold">
               Agency Name *
             </label>
-
             <input
               type="text"
               className="form-control"
               placeholder="Enter agency name"
               value={agencyName}
               disabled={loading}
-              onChange={(e) =>
-                setAgencyName(e.target.value)
-              }
+              onChange={(e) => setAgencyName(e.target.value)}
             />
-
           </div>
 
-
-          {/* =========================
-              OWNER NAME
-          ========================= */}
-
           <div className="mb-3">
-
             <label className="form-label fw-semibold">
               Owner Name *
             </label>
-
             <input
               type="text"
               className="form-control"
               placeholder="Enter owner name"
               value={ownerName}
               disabled={loading}
-              onChange={(e) =>
-                setOwnerName(e.target.value)
-              }
+              onChange={(e) => setOwnerName(e.target.value)}
             />
-
           </div>
 
-
-          {/* =========================
-              EMAIL
-          ========================= */}
-
           <div className="mb-3">
-
             <label className="form-label fw-semibold">
               Email *
             </label>
-
             <input
               type="email"
               className="form-control"
               placeholder="agency@email.com"
               value={email}
               disabled={loading}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
+              onChange={(e) => setEmail(e.target.value)}
             />
-
           </div>
 
-
-          {/* =========================
-              PHONE
-          ========================= */}
-
           <div className="mb-3">
-
             <label className="form-label fw-semibold">
               Phone *
             </label>
-
             <input
               type="text"
               className="form-control"
               placeholder="017XXXXXXXX"
               value={phone}
               disabled={loading}
-              onChange={(e) =>
-                setPhone(e.target.value)
-              }
+              onChange={(e) => setPhone(e.target.value)}
             />
-
           </div>
 
+          {/* AGENCY ADDRESS */}
+          <div className="mb-3">
+            <label className="form-label fw-semibold">
+              Agency Address *
+            </label>
+            <textarea
+              className="form-control"
+              placeholder="Enter full agency address"
+              rows={3}
+              value={address}
+              disabled={loading}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+          </div>
 
-          {/* =========================
-              PASSWORD
-          ========================= */}
+          {/* TRADE LICENSE */}
+          <div className="mb-3">
+            <label className="form-label fw-semibold">
+              Trade License Number *
+            </label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter trade license number"
+              value={tradeLicense}
+              disabled={loading}
+              onChange={(e) => setTradeLicense(e.target.value)}
+            />
+          </div>
 
           <div className="mb-3">
-
             <label className="form-label fw-semibold">
               Password *
             </label>
-
             <input
               type="password"
               className="form-control"
               placeholder="Minimum 6 characters"
               value={password}
               disabled={loading}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
+              onChange={(e) => setPassword(e.target.value)}
             />
-
           </div>
 
-
-          {/* =========================
-              CONFIRM PASSWORD
-          ========================= */}
-
           <div className="mb-3">
-
             <label className="form-label fw-semibold">
               Confirm Password *
             </label>
-
             <input
               type="password"
               className="form-control"
               placeholder="Confirm password"
               value={passwordConfirmation}
               disabled={loading}
-              onChange={(e) =>
-                setPasswordConfirmation(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   handleRegister();
                 }
               }}
             />
-
           </div>
-
-
-          {/* =========================
-              REGISTER BUTTON
-          ========================= */}
 
           <button
             type="button"
@@ -383,18 +320,10 @@ export default function Register() {
               fontSize: "16px",
             }}
           >
-            {loading
-              ? "Registering..."
-              : "Register Agency"}
+            {loading ? "Registering..." : "Register Agency"}
           </button>
 
-
-          {/* =========================
-              LOGIN LINK
-          ========================= */}
-
           <div className="text-center mt-3">
-
             <span className="text-muted">
               Already have an agency account?
             </span>
@@ -409,18 +338,11 @@ export default function Register() {
             >
               Back to Login
             </button>
-
           </div>
-
-
-          {/* =========================
-              FOOTER
-          ========================= */}
 
           <p className="text-center mt-4 mb-0 text-muted">
             AIR FLY INTERNATIONAL B2B Portal
           </p>
-
         </div>
       </div>
     </div>
