@@ -7,7 +7,7 @@ export default function WalletStatementPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const API_URL = "http://127.0.0.1:8090";
+ const API_URL = "https://airfly-b2b-backend.onrender.com";
 
   useEffect(() => {
     const token = localStorage.getItem("token");
