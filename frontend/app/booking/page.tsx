@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const API = "http://127.0.0.1:8090/api";
+import API from "@/services/api";
 
 export default function BookingPage() {
   const router = useRouter();
@@ -27,7 +26,6 @@ export default function BookingPage() {
 
   const [loading, setLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -48,10 +46,7 @@ export default function BookingPage() {
     }
   }, [router]);
 
-  // --------------------------------------------------
   // GET WALLET BALANCE
-  // --------------------------------------------------
-
   useEffect(() => {
     const loadWallet = async () => {
       const token = localStorage.getItem("token");
@@ -65,6 +60,7 @@ export default function BookingPage() {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
+          cache: "no-store",
         });
 
         const data = await response.json();
@@ -80,10 +76,7 @@ export default function BookingPage() {
     loadWallet();
   }, []);
 
-  // --------------------------------------------------
   // CALCULATE TOTAL
-  // --------------------------------------------------
-
   const getFare = () => {
     if (!flight) return 0;
 
@@ -105,15 +98,10 @@ export default function BookingPage() {
   };
 
   const fare = getFare();
-
   const totalPassengers = adults + children + infants;
-
   const totalAmount = fare * adults;
 
-  // --------------------------------------------------
   // CONFIRM BOOKING
-  // --------------------------------------------------
-
   const confirmBooking = async () => {
     setError("");
 
@@ -125,7 +113,6 @@ export default function BookingPage() {
       return;
     }
 
-    // Validation
     if (!passengerName.trim()) {
       setError("Passenger name is required.");
       return;
@@ -161,10 +148,7 @@ export default function BookingPage() {
       return;
     }
 
-    if (
-      walletBalance !== null &&
-      walletBalance < totalAmount
-    ) {
+    if (walletBalance !== null && walletBalance < totalAmount) {
       setError(
         `Insufficient wallet balance. Required ৳${totalAmount.toLocaleString()}, available ৳${walletBalance.toLocaleString()}.`
       );
@@ -176,29 +160,17 @@ export default function BookingPage() {
     try {
       const bookingData = {
         flight_id: Number(flight.id),
-
         passenger_name: passengerName.trim(),
-
         passport: passport.trim(),
-
         nationality: nationality,
-
         date_of_birth: dateOfBirth,
-
         gender: gender,
-
         phone: phone.trim(),
-
         email: email.trim(),
-
         journey_type: journeyType,
-
         travel_class: travelClass,
-
         adults: Number(adults),
-
         children: Number(children),
-
         infants: Number(infants),
       };
 
@@ -206,13 +178,11 @@ export default function BookingPage() {
 
       const response = await fetch(`${API}/bookings`, {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-
         body: JSON.stringify(bookingData),
       });
 
@@ -220,20 +190,22 @@ export default function BookingPage() {
 
       console.log("BOOKING RESPONSE:", data);
 
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        alert("Session expired. Please login again.");
+        router.push("/login");
+        return;
+      }
+
       if (response.ok && data.success) {
-        // Save booking confirmation for confirmation page
         localStorage.setItem(
           "booking_confirmation",
           JSON.stringify(data)
         );
 
-        // Remove selected flight
         localStorage.removeItem("selected_flight");
-
-        // Go to confirmation page
         router.push("/booking-confirmation");
       } else {
-        // Laravel validation errors
         if (data.errors) {
           const messages = Object.values(data.errors)
             .flat()
@@ -248,19 +220,15 @@ export default function BookingPage() {
       }
     } catch (error) {
       console.error("Booking API Error:", error);
-
       setError(
-        "Unable to connect to Laravel API. Please make sure backend is running."
+        "Unable to connect to Laravel API. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // --------------------------------------------------
   // LOADING
-  // --------------------------------------------------
-
   if (!flight) {
     return (
       <div className="container py-5 text-center">
@@ -272,25 +240,16 @@ export default function BookingPage() {
 
   return (
     <div className="container py-5">
-
       <div className="row g-4">
 
-        {/* ========================================= */}
         {/* FLIGHT INFORMATION */}
-        {/* ========================================= */}
-
         <div className="col-lg-4">
-
           <div className="card shadow-sm">
-
             <div className="card-header bg-primary text-white">
-              <h5 className="mb-0">
-                Flight Information
-              </h5>
+              <h5 className="mb-0">Flight Information</h5>
             </div>
 
             <div className="card-body">
-
               <h5 className="mb-3">
                 {flight.airline || "Airline"}
               </h5>
@@ -308,26 +267,21 @@ export default function BookingPage() {
               {flight.departure_time && (
                 <p className="mb-2">
                   <strong>Departure:</strong>{" "}
-                  {new Date(
-                    flight.departure_time
-                  ).toLocaleString()}
+                  {new Date(flight.departure_time).toLocaleString()}
                 </p>
               )}
 
               {flight.arrival_time && (
                 <p className="mb-2">
                   <strong>Arrival:</strong>{" "}
-                  {new Date(
-                    flight.arrival_time
-                  ).toLocaleString()}
+                  {new Date(flight.arrival_time).toLocaleString()}
                 </p>
               )}
 
               <hr />
 
               <p className="mb-2">
-                <strong>Travel Class:</strong>{" "}
-                {travelClass}
+                <strong>Travel Class:</strong> {travelClass}
               </p>
 
               <p className="mb-0">
@@ -336,43 +290,26 @@ export default function BookingPage() {
                   ৳ {fare.toLocaleString()}
                 </span>
               </p>
-
             </div>
-
           </div>
 
-
           {/* WALLET */}
-
           <div className="card shadow-sm mt-4">
-
             <div className="card-body">
-
-              <h6 className="text-muted">
-                Wallet Balance
-              </h6>
-
+              <h6 className="text-muted">Wallet Balance</h6>
               <h3 className="text-success mb-0">
                 {walletBalance !== null
                   ? `৳ ${walletBalance.toLocaleString()}`
                   : "Loading..."}
               </h3>
-
             </div>
-
           </div>
 
-
-          {/* TOTAL */}
-
+          {/* BOOKING SUMMARY */}
           <div className="card shadow-sm mt-4">
-
-            <div className="card-header">
-              Booking Summary
-            </div>
+            <div className="card-header">Booking Summary</div>
 
             <div className="card-body">
-
               <div className="d-flex justify-content-between">
                 <span>Adult</span>
                 <span>{adults}</span>
@@ -397,39 +334,22 @@ export default function BookingPage() {
 
               <div className="d-flex justify-content-between mt-2">
                 <strong>Total Amount</strong>
-
                 <strong className="text-success">
                   ৳ {totalAmount.toLocaleString()}
                 </strong>
               </div>
-
             </div>
-
           </div>
-
         </div>
 
-
-        {/* ========================================= */}
         {/* PASSENGER INFORMATION */}
-        {/* ========================================= */}
-
         <div className="col-lg-8">
-
           <div className="card shadow-sm">
-
             <div className="card-header bg-success text-white">
-
-              <h5 className="mb-0">
-                Passenger Information
-              </h5>
-
+              <h5 className="mb-0">Passenger Information</h5>
             </div>
 
-
             <div className="card-body">
-
-              {/* ERROR */}
 
               {error && (
                 <div className="alert alert-danger">
@@ -437,328 +357,168 @@ export default function BookingPage() {
                 </div>
               )}
 
-
               {/* PASSENGER NAME */}
-
               <div className="mb-3">
-
-                <label className="form-label">
-                  Passenger Name *
-                </label>
-
+                <label className="form-label">Passenger Name *</label>
                 <input
                   type="text"
                   className="form-control"
                   placeholder="Enter passenger full name"
                   value={passengerName}
-                  onChange={(e) =>
-                    setPassengerName(e.target.value)
-                  }
+                  onChange={(e) => setPassengerName(e.target.value)}
                 />
-
               </div>
 
-
               <div className="row">
-
-
-                {/* PASSPORT */}
-
                 <div className="col-md-6 mb-3">
-
-                  <label className="form-label">
-                    Passport No *
-                  </label>
-
+                  <label className="form-label">Passport No *</label>
                   <input
                     type="text"
                     className="form-control"
                     placeholder="e.g. BG1234567"
                     value={passport}
-                    onChange={(e) =>
-                      setPassport(e.target.value)
-                    }
+                    onChange={(e) => setPassport(e.target.value)}
                   />
-
                 </div>
 
-
-                {/* NATIONALITY */}
-
                 <div className="col-md-6 mb-3">
-
-                  <label className="form-label">
-                    Nationality
-                  </label>
-
+                  <label className="form-label">Nationality</label>
                   <input
                     type="text"
                     className="form-control"
                     value={nationality}
-                    onChange={(e) =>
-                      setNationality(e.target.value)
-                    }
+                    onChange={(e) => setNationality(e.target.value)}
                   />
-
                 </div>
-
               </div>
 
-
               <div className="row">
-
-
-                {/* DOB */}
-
                 <div className="col-md-4 mb-3">
-
-                  <label className="form-label">
-                    Date of Birth *
-                  </label>
-
+                  <label className="form-label">Date of Birth *</label>
                   <input
                     type="date"
                     className="form-control"
                     value={dateOfBirth}
-                    onChange={(e) =>
-                      setDateOfBirth(e.target.value)
-                    }
+                    onChange={(e) => setDateOfBirth(e.target.value)}
                   />
-
                 </div>
 
-
-                {/* GENDER */}
-
                 <div className="col-md-4 mb-3">
-
-                  <label className="form-label">
-                    Gender
-                  </label>
-
+                  <label className="form-label">Gender</label>
                   <select
                     className="form-select"
                     value={gender}
-                    onChange={(e) =>
-                      setGender(e.target.value)
-                    }
+                    onChange={(e) => setGender(e.target.value)}
                   >
-                    <option value="Male">
-                      Male
-                    </option>
-
-                    <option value="Female">
-                      Female
-                    </option>
-
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
                   </select>
-
                 </div>
 
-
-                {/* JOURNEY */}
-
                 <div className="col-md-4 mb-3">
-
-                  <label className="form-label">
-                    Journey Type
-                  </label>
-
+                  <label className="form-label">Journey Type</label>
                   <select
                     className="form-select"
                     value={journeyType}
-                    onChange={(e) =>
-                      setJourneyType(e.target.value)
-                    }
+                    onChange={(e) => setJourneyType(e.target.value)}
                   >
-
-                    <option value="One Way">
-                      One Way
-                    </option>
-
-                    <option value="Round Trip">
-                      Round Trip
-                    </option>
-
+                    <option value="One Way">One Way</option>
+                    <option value="Round Trip">Round Trip</option>
                   </select>
-
                 </div>
-
               </div>
 
-
               <div className="row">
-
-
-                {/* PHONE */}
-
                 <div className="col-md-6 mb-3">
-
-                  <label className="form-label">
-                    Phone *
-                  </label>
-
+                  <label className="form-label">Phone *</label>
                   <input
                     type="tel"
                     className="form-control"
                     placeholder="01700000000"
                     value={phone}
-                    onChange={(e) =>
-                      setPhone(e.target.value)
-                    }
+                    onChange={(e) => setPhone(e.target.value)}
                   />
-
                 </div>
 
-
-                {/* EMAIL */}
-
                 <div className="col-md-6 mb-3">
-
-                  <label className="form-label">
-                    Email *
-                  </label>
-
+                  <label className="form-label">Email *</label>
                   <input
                     type="email"
                     className="form-control"
                     placeholder="example@gmail.com"
                     value={email}
-                    onChange={(e) =>
-                      setEmail(e.target.value)
-                    }
+                    onChange={(e) => setEmail(e.target.value)}
                   />
-
                 </div>
-
               </div>
 
-
               {/* TRAVEL CLASS */}
-
               <div className="mb-3">
-
-                <label className="form-label">
-                  Travel Class
-                </label>
-
+                <label className="form-label">Travel Class</label>
                 <select
                   className="form-select"
                   value={travelClass}
-                  onChange={(e) =>
-                    setTravelClass(e.target.value)
-                  }
+                  onChange={(e) => setTravelClass(e.target.value)}
                 >
-
-                  <option value="Economy">
-                    Economy
-                  </option>
-
-                  <option value="Business">
-                    Business
-                  </option>
-
+                  <option value="Economy">Economy</option>
+                  <option value="Business">Business</option>
                 </select>
-
               </div>
 
-
               {/* PASSENGERS */}
-
               <div className="row">
-
                 <div className="col-md-4 mb-3">
-
-                  <label className="form-label">
-                    Adults
-                  </label>
-
+                  <label className="form-label">Adults</label>
                   <input
                     type="number"
                     min="1"
                     className="form-control"
                     value={adults}
                     onChange={(e) =>
-                      setAdults(
-                        Math.max(
-                          1,
-                          Number(e.target.value)
-                        )
-                      )
+                      setAdults(Math.max(1, Number(e.target.value)))
                     }
                   />
-
                 </div>
 
-
                 <div className="col-md-4 mb-3">
-
-                  <label className="form-label">
-                    Children
-                  </label>
-
+                  <label className="form-label">Children</label>
                   <input
                     type="number"
                     min="0"
                     className="form-control"
                     value={children}
                     onChange={(e) =>
-                      setChildren(
-                        Math.max(
-                          0,
-                          Number(e.target.value)
-                        )
-                      )
+                      setChildren(Math.max(0, Number(e.target.value)))
                     }
                   />
-
                 </div>
 
-
                 <div className="col-md-4 mb-3">
-
-                  <label className="form-label">
-                    Infants
-                  </label>
-
+                  <label className="form-label">Infants</label>
                   <input
                     type="number"
                     min="0"
                     className="form-control"
                     value={infants}
                     onChange={(e) =>
-                      setInfants(
-                        Math.max(
-                          0,
-                          Number(e.target.value)
-                        )
-                      )
+                      setInfants(Math.max(0, Number(e.target.value)))
                     }
                   />
-
                 </div>
-
               </div>
-
 
               <hr />
 
-
-              {/* CONFIRM */}
-
+              {/* CONFIRM BOOKING */}
               <button
                 type="button"
                 className="btn btn-success btn-lg w-100"
                 disabled={loading}
                 onClick={confirmBooking}
               >
-
                 {loading ? (
                   <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                    />
-
+                    <span className="spinner-border spinner-border-sm me-2" />
                     Booking...
                   </>
                 ) : (
@@ -767,17 +527,12 @@ export default function BookingPage() {
                     {totalAmount.toLocaleString()}
                   </>
                 )}
-
               </button>
 
             </div>
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }
