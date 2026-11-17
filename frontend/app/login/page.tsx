@@ -64,10 +64,15 @@ export default function Login() {
         return;
       }
 
-      // Login successful
-      if (response.ok && data.success) {
-        // Save authentication token
-        localStorage.setItem("token", data.token || "");
+     
+// Login successful
+if (response.ok && data.success) {
+
+  // Clear previous Admin session
+  localStorage.removeItem("admin_token");
+
+  // Save Agent authentication token
+  localStorage.setItem("token", data.token || "");
 
         // Save agent information
         localStorage.setItem(
