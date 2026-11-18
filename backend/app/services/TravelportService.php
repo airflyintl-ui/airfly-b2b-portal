@@ -50,17 +50,31 @@ class TravelportService
                     );
                 }
 
-                return $response->json('access_token');
+                $token = $response->json('access_token');
+
+                if (!$token) {
+                    throw new Exception(
+                        'Travelport access token was not received.'
+                    );
+                }
+
+                return $token;
             }
         );
     }
 
     /**
-     * Search Flights
+     * Search Flights: One Way, Round Trip and Multi-City
      */
     public function searchFlights(array $data): array
     {
         $token = $this->getToken();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Passenger Criteria
+        |--------------------------------------------------------------------------
+        */
 
         $passengers = [];
 
@@ -70,6 +84,7 @@ class TravelportService
 
         if ($adults > 0) {
             $passengers[] = [
+                '@type' => 'PassengerCriteria',
                 'number' => $adults,
                 'passengerTypeCode' => 'ADT'
             ];
@@ -77,6 +92,7 @@ class TravelportService
 
         if ($children > 0) {
             $passengers[] = [
+                '@type' => 'PassengerCriteria',
                 'number' => $children,
                 'passengerTypeCode' => 'CHD'
             ];
@@ -84,40 +100,136 @@ class TravelportService
 
         if ($infants > 0) {
             $passengers[] = [
+                '@type' => 'PassengerCriteria',
                 'number' => $infants,
                 'passengerTypeCode' => 'INF'
             ];
         }
 
-        $segments = [
-            [
-                '@type' => 'SearchCriteriaFlight',
-                'departureDate' => $data['departure_date'],
-                'From' => [
-                    'value' => strtoupper($data['from'])
-                ],
-                'To' => [
-                    'value' => strtoupper($data['to'])
-                ]
-            ]
-        ];
+        /*
+        |--------------------------------------------------------------------------
+        | Build Flight Segments
+        |--------------------------------------------------------------------------
+        */
 
-        // Round trip
-        if (
-            ($data['trip_type'] ?? 'oneway') === 'roundtrip'
-            && !empty($data['return_date'])
-        ) {
+        $tripType = $data['trip_type'] ?? 'oneway';
+
+        $segments = [];
+
+        // Multi-City
+        if ($tripType === 'multicity') {
+
+            if (
+                empty($data['segments']) ||
+                !is_array($data['segments'])
+            ) {
+                throw new Exception(
+                    'Multi-City flight segments are required.'
+                );
+            }
+
+            if (
+                count($data['segments']) < 2 ||
+                count($data['segments']) > 6
+            ) {
+                throw new Exception(
+                    'Multi-City search requires 2 to 6 segments.'
+                );
+            }
+
+            foreach ($data['segments'] as $segment) {
+
+                $from = strtoupper(trim($segment['from'] ?? ''));
+                $to = strtoupper(trim($segment['to'] ?? ''));
+                $date = $segment['departure_date'] ?? '';
+
+                if (
+                    !preg_match('/^[A-Z]{3}$/', $from) ||
+                    !preg_match('/^[A-Z]{3}$/', $to)
+                ) {
+                    throw new Exception(
+                        'Invalid airport code in Multi-City segment.'
+                    );
+                }
+
+                if ($from === $to) {
+                    throw new Exception(
+                        'Origin and destination cannot be the same.'
+                    );
+                }
+
+                if (
+                    !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ||
+                    !checkdate(
+                        (int)substr($date, 5, 2),
+                        (int)substr($date, 8, 2),
+                        (int)substr($date, 0, 4)
+                    )
+                ) {
+                    throw new Exception(
+                        'Invalid departure date in Multi-City segment.'
+                    );
+                }
+
+                $segments[] = [
+                    '@type' => 'SearchCriteriaFlight',
+                    'departureDate' => $date,
+                    'From' => [
+                        'value' => $from
+                    ],
+                    'To' => [
+                        'value' => $to
+                    ]
+                ];
+            }
+        }
+
+        // One Way and Round Trip
+        else {
+
+            $from = strtoupper(trim($data['from'] ?? ''));
+            $to = strtoupper(trim($data['to'] ?? ''));
+            $departureDate = $data['departure_date'] ?? '';
+
+            if ($from === $to) {
+                throw new Exception(
+                    'Origin and destination cannot be the same.'
+                );
+            }
+
             $segments[] = [
                 '@type' => 'SearchCriteriaFlight',
-                'departureDate' => $data['return_date'],
+                'departureDate' => $departureDate,
                 'From' => [
-                    'value' => strtoupper($data['to'])
+                    'value' => $from
                 ],
                 'To' => [
-                    'value' => strtoupper($data['from'])
+                    'value' => $to
                 ]
             ];
+
+            if (
+                $tripType === 'roundtrip' &&
+                !empty($data['return_date'])
+            ) {
+                $segments[] = [
+                    '@type' => 'SearchCriteriaFlight',
+                    'departureDate' => $data['return_date'],
+                    'From' => [
+                        'value' => $to
+                    ],
+                    'To' => [
+                        'value' => $from
+                    ]
+                ];
+            }
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Travelport Request Payload
+        |--------------------------------------------------------------------------
+        */
 
         $payload = [
             'CatalogProductOfferingsQueryRequest' => [
@@ -125,6 +237,7 @@ class TravelportService
                 '@type' => 'CatalogProductOfferingsQueryRequest',
 
                 'CatalogProductOfferingsRequest' => [
+
                     '@type' => 'CatalogProductOfferingsRequestAir',
 
                     'offersPerPage' => 50,
@@ -136,9 +249,18 @@ class TravelportService
             ]
         ];
 
+        /*
+        |--------------------------------------------------------------------------
+        | Send Request to Travelport
+        |--------------------------------------------------------------------------
+        */
+
         $response = Http::withHeaders([
+
             'Accept' => 'application/json',
+
             'Content-Type' => 'application/json',
+
             'Authorization' => 'Bearer ' . $token,
 
             'XAUTH_TRAVELPORT_ACCESSGROUP' =>
@@ -149,11 +271,13 @@ class TravelportService
                 env('TRAVELPORT_GDS'),
 
             'Accept-Version' => '11',
+
             'Content-Version' => '11',
 
             'Cache-Control' => 'no-cache',
 
             'Accept-Encoding' => 'gzip, deflate',
+
         ])
         ->timeout(60)
         ->post(
