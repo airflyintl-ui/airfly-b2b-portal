@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 
+const cardStyle = {
+  background: "#ffffff",
+  padding: "24px",
+  borderRadius: "14px",
+  border: "1px solid #e5e7eb",
+  boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
+};
+
 export default function ContactPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -11,174 +19,240 @@ export default function ContactPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const subject = encodeURIComponent(
-      `Website Contact Message from ${name}`
-    );
-
+    const subject = encodeURIComponent(`Contact from ${name}`);
     const body = encodeURIComponent(
       `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\nMessage:\n${message}`
     );
 
-    window.location.href = `mailto:airflyintl@gmail.com?subject=${subject}&body=${body}`;
+    window.location.href =
+      `mailto:airflyintl@gmail.com?subject=${subject}&body=${body}`;
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "13px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    marginTop: "7px",
+    fontSize: "15px",
+    boxSizing: "border-box" as const,
+    color: "#1f2937",
+    background: "#ffffff",
   };
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <section className="bg-blue-700 py-16 px-5 text-center text-white">
-        <h1 className="text-4xl font-bold mb-4">Contact Airfly International</h1>
-        <p className="text-blue-100 text-lg">
-          We are here to help you with your travel needs.
+    <main style={{
+      minHeight: "100vh",
+      background: "#f3f6fb",
+      color: "#1f2937",
+      fontFamily: "Arial, sans-serif",
+      paddingBottom: "50px",
+    }}>
+
+      <header style={{
+        background: "#1266e8",
+        color: "white",
+        textAlign: "center",
+        padding: "55px 20px",
+      }}>
+        <h1 style={{ fontSize: "34px", fontWeight: 800, margin: "0 0 12px" }}>
+          Contact Airfly International
+        </h1>
+        <p style={{ fontSize: "17px", margin: 0 }}>
+          We are always ready to assist you with your travel needs.
         </p>
-      </section>
+      </header>
 
-      <section className="max-w-6xl mx-auto px-5 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div style={{
+        maxWidth: "1050px",
+        width: "calc(100% - 32px)",
+        margin: "40px auto",
+      }}>
 
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+          gap: "25px",
+          alignItems: "start",
+        }}>
+
+          <section style={cardStyle}>
+            <h2 style={{
+              fontSize: "24px",
+              fontWeight: 800,
+              color: "#1266e8",
+              margin: "0 0 25px",
+            }}>
               Contact Information
             </h2>
 
-            <div className="space-y-5">
-
-              <div className="bg-white p-5 rounded-xl shadow-sm">
-                <h3 className="font-bold text-blue-700 text-lg mb-2">
-                  📍 Office Address
-                </h3>
-                <p className="text-gray-600 leading-7">
-                  598/A, Shamsuddin Tower (2nd Floor),
-                  <br />
-                  Reazuddin Bazar, Chattogram
-                </p>
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{ fontSize: "18px", fontWeight: 700 }}>
+                📍 Office Address
               </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm">
-                <h3 className="font-bold text-blue-700 text-lg mb-2">
-                  ☎ Telephone
-                </h3>
-                <a href="tel:02333366085" className="text-gray-700 hover:text-blue-700">
-                  02-333366085
-                </a>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm">
-                <h3 className="font-bold text-blue-700 text-lg mb-2">
-                  📱 Mobile
-                </h3>
-                <a href="tel:01819316705" className="text-gray-700 hover:text-blue-700">
-                  01819316705
-                </a>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm">
-                <h3 className="font-bold text-blue-700 text-lg mb-2">
-                  ✉ Email
-                </h3>
-                <a
-                  href="mailto:airflyintl@gmail.com"
-                  className="text-gray-700 hover:text-blue-700"
-                >
-                  airflyintl@gmail.com
-                </a>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm">
-                <h3 className="font-bold text-green-600 text-lg mb-2">
-                  WhatsApp
-                </h3>
-                <a
-                  href="https://wa.me/8801711304917"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold"
-                >
-                  Chat on WhatsApp: 01711304917
-                </a>
-              </div>
-
+              <p style={{ lineHeight: 1.8, margin: "8px 0 0", color: "#4b5563" }}>
+                598/A, Shamsuddin Tower (2nd Floor),
+                <br />
+                Reazuddin Bazar, Chattogram
+              </p>
             </div>
-          </div>
 
-          <div className="bg-white p-7 rounded-xl shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{ fontSize: "18px", fontWeight: 700 }}>
+                ☎ Telephone
+              </div>
+              <a href="tel:02333366085" style={{ color: "#1266e8", display: "inline-block", marginTop: "8px" }}>
+                02-333366085
+              </a>
+            </div>
+
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{ fontSize: "18px", fontWeight: 700 }}>
+                📱 Mobile
+              </div>
+              <a href="tel:01819316705" style={{ color: "#1266e8", display: "inline-block", marginTop: "8px" }}>
+                01819316705
+              </a>
+            </div>
+
+            <div style={{ marginBottom: "24px" }}>
+              <div style={{ fontSize: "18px", fontWeight: 700 }}>
+                ✉ Email
+              </div>
+              <a href="mailto:airflyintl@gmail.com" style={{ color: "#1266e8", display: "inline-block", marginTop: "8px" }}>
+                airflyintl@gmail.com
+              </a>
+            </div>
+
+            <div style={{
+              background: "#ecfdf5",
+              border: "1px solid #bbf7d0",
+              borderRadius: "12px",
+              padding: "18px",
+            }}>
+              <div style={{
+                color: "#15803d",
+                fontSize: "20px",
+                fontWeight: 800,
+                marginBottom: "8px",
+              }}>
+                WhatsApp Contact
+              </div>
+
+              <div style={{
+                color: "#166534",
+                fontSize: "23px",
+                fontWeight: 800,
+                marginBottom: "15px",
+              }}>
+                01711304917
+              </div>
+
+              <a
+                href="https://wa.me/8801711304917"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  background: "#16a34a",
+                  color: "#ffffff",
+                  padding: "12px 22px",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                Chat on WhatsApp →
+              </a>
+            </div>
+          </section>
+
+          <section style={cardStyle}>
+            <h2 style={{
+              fontSize: "24px",
+              fontWeight: 800,
+              color: "#1266e8",
+              margin: "0 0 10px",
+            }}>
               Send Us a Message
             </h2>
 
-            <p className="text-gray-500 mb-6">
-              Please fill in the form below to contact us.
+            <p style={{ color: "#6b7280", marginBottom: "25px" }}>
+              Have a question? Send us your message.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Your Name
-                </label>
+            <form onSubmit={handleSubmit}>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: "16px" }}>
+                Your Name
                 <input
-                  type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+                  style={inputStyle}
                 />
-              </div>
+              </label>
 
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Email Address
-                </label>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: "16px" }}>
+                Email Address
                 <input
-                  type="email"
                   required
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+                  style={inputStyle}
                 />
-              </div>
+              </label>
 
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Phone Number
-                </label>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: "16px" }}>
+                Phone Number
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Enter your phone number"
-                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+                  style={inputStyle}
                 />
-              </div>
+              </label>
 
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Your Message
-                </label>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: "20px" }}>
+                Your Message
                 <textarea
                   required
                   rows={5}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Write your message here..."
-                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{ ...inputStyle, resize: "vertical" }}
                 />
-              </div>
+              </label>
 
               <button
                 type="submit"
-                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded-lg transition"
+                style={{
+                  width: "100%",
+                  padding: "15px",
+                  background: "#facc15",
+                  color: "#111827",
+                  border: "none",
+                  borderRadius: "9px",
+                  fontSize: "16px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
               >
                 Send Message
               </button>
             </form>
 
-            <p className="text-xs text-gray-500 mt-4">
-              The message will open in your email application for sending.
+            <p style={{ fontSize: "12px", color: "#6b7280", marginTop: "15px" }}>
+              Your email application will open to send the message.
             </p>
-          </div>
+          </section>
 
         </div>
-      </section>
+      </div>
     </main>
   );
 }
