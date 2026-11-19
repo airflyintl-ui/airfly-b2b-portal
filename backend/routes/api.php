@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AdminAuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AgentController;
@@ -33,12 +34,19 @@ Route::get('/', function () {
 
 
 // ======================================================
-// AUTH
+// AGENT AUTH
 // ======================================================
 
 Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/login', [AuthController::class, 'login']);
+
+
+// ======================================================
+// ADMIN LOGIN
+// ======================================================
+
+Route::post('/admin/login', [AdminAuthController::class, 'login']);
 
 
 // ======================================================
@@ -94,30 +102,22 @@ Route::post('/search-flight', [FlightController::class, 'search']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // ==================================================
-    // LOGOUT
-    // ==================================================
+    // AGENT LOGOUT
 
     Route::post('/logout', [AuthController::class, 'logout']);
 
 
-    // ==================================================
-    // USER DASHBOARD
-    // ==================================================
+    // AGENT DASHBOARD
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
 
-    // ==================================================
-    // WALLET
-    // ==================================================
+    // AGENT WALLET
 
     Route::get('/wallet/statement', [WalletController::class, 'statement']);
 
 
-    // ==================================================
     // AGENT RECHARGES
-    // ==================================================
 
     Route::get('/recharges', [RechargeController::class, 'index']);
 
@@ -126,9 +126,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/recharges/{id}', [RechargeController::class, 'show']);
 
 
-    // ==================================================
-    // BOOKINGS
-    // ==================================================
+    // AGENT BOOKINGS
 
     Route::get('/bookings', [BookingController::class, 'index']);
 
@@ -144,30 +142,39 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 // ======================================================
-// ADMIN DASHBOARD
+// PROTECTED ADMIN ROUTES
 // ======================================================
 
-Route::get(
-    '/admin/dashboard',
-    [AdminDashboardController::class, 'index']
-);
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+
+    // ADMIN LOGOUT
+
+    Route::post('/admin/logout', [AdminAuthController::class, 'logout']);
 
 
-// ======================================================
-// ADMIN RECHARGES
-// ======================================================
+    // ADMIN DASHBOARD
 
-Route::get(
-    '/admin/recharges',
-    [RechargeController::class, 'all']
-);
+    Route::get(
+        '/admin/dashboard',
+        [AdminDashboardController::class, 'index']
+    );
 
-Route::post(
-    '/recharges/{id}/approve',
-    [RechargeController::class, 'approve']
-);
 
-Route::post(
-    '/recharges/{id}/reject',
-    [RechargeController::class, 'reject']
-);
+    // ADMIN RECHARGES
+
+    Route::get(
+        '/admin/recharges',
+        [RechargeController::class, 'all']
+    );
+
+    Route::post(
+        '/recharges/{id}/approve',
+        [RechargeController::class, 'approve']
+    );
+
+    Route::post(
+        '/recharges/{id}/reject',
+        [RechargeController::class, 'reject']
+    );
+
+});
