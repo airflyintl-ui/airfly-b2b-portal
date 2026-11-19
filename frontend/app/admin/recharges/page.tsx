@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import API from "@/services/api";
 
 type Agent = {
@@ -25,6 +26,8 @@ type Recharge = {
 };
 
 export default function AdminRechargesPage() {
+  const router = useRouter();
+
   const [recharges, setRecharges] = useState<Recharge[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
@@ -37,6 +40,7 @@ export default function AdminRechargesPage() {
     const token = localStorage.getItem("admin_token");
 
     if (!token) {
+      router.replace("/admin/login");
       throw new Error("Admin session expired. Please login again.");
     }
 
@@ -46,8 +50,19 @@ export default function AdminRechargesPage() {
     };
   };
 
+  // CHECK ADMIN AUTHORIZATION
+  const handleAuthFailure = (status: number) => {
+    if (status === 401 || status === 403) {
+      localStorage.removeItem("admin_token");
+      router.replace("/admin/login");
+      return true;
+    }
+
+    return false;
+  };
+
   // LOAD RECHARGES
-  const loadRecharges = async () => {
+  const loadRecharges = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -58,6 +73,10 @@ export default function AdminRechargesPage() {
       });
 
       const data = await response.json();
+
+      if (handleAuthFailure(response.status)) {
+        return;
+      }
 
       if (response.ok && data.success) {
         setRecharges(data.recharges || []);
@@ -72,6 +91,13 @@ export default function AdminRechargesPage() {
     } catch (error) {
       console.error("LOAD RECHARGES ERROR:", error);
 
+      if (
+        error instanceof Error &&
+        error.message.includes("Admin session expired")
+      ) {
+        return;
+      }
+
       alert(
         error instanceof Error
           ? error.message
@@ -80,11 +106,11 @@ export default function AdminRechargesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     loadRecharges();
-  }, []);
+  }, [loadRecharges]);
 
   // FILTER
   const filteredRecharges = useMemo(() => {
@@ -136,9 +162,7 @@ export default function AdminRechargesPage() {
 
   // APPROVE
   const approveRecharge = async (id: number) => {
-    if (
-      !confirm("Are you sure you want to approve this recharge?")
-    ) {
+    if (!confirm("Are you sure you want to approve this recharge?")) {
       return;
     }
 
@@ -155,6 +179,10 @@ export default function AdminRechargesPage() {
 
       const data = await response.json();
 
+      if (handleAuthFailure(response.status)) {
+        return;
+      }
+
       if (response.ok && data.success) {
         alert(data.message || "Recharge Approved Successfully");
         await loadRecharges();
@@ -166,6 +194,13 @@ export default function AdminRechargesPage() {
       }
     } catch (error) {
       console.error("APPROVE ERROR:", error);
+
+      if (
+        error instanceof Error &&
+        error.message.includes("Admin session expired")
+      ) {
+        return;
+      }
 
       alert(
         error instanceof Error
@@ -179,9 +214,7 @@ export default function AdminRechargesPage() {
 
   // REJECT
   const rejectRecharge = async (id: number) => {
-    if (
-      !confirm("Are you sure you want to reject this recharge?")
-    ) {
+    if (!confirm("Are you sure you want to reject this recharge?")) {
       return;
     }
 
@@ -198,6 +231,10 @@ export default function AdminRechargesPage() {
 
       const data = await response.json();
 
+      if (handleAuthFailure(response.status)) {
+        return;
+      }
+
       if (response.ok && data.success) {
         alert(data.message || "Recharge Rejected Successfully");
         await loadRecharges();
@@ -209,6 +246,13 @@ export default function AdminRechargesPage() {
       }
     } catch (error) {
       console.error("REJECT ERROR:", error);
+
+      if (
+        error instanceof Error &&
+        error.message.includes("Admin session expired")
+      ) {
+        return;
+      }
 
       alert(
         error instanceof Error
@@ -261,8 +305,9 @@ export default function AdminRechargesPage() {
       }}
     >
       <div className="container-fluid p-4">
+
         {/* HEADER */}
-        <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
           <div>
             <h2 className="fw-bold mb-1">
               Recharge Management
@@ -284,6 +329,7 @@ export default function AdminRechargesPage() {
 
         {/* SUMMARY CARDS */}
         <div className="row g-3 mb-4">
+
           <div className="col-lg-3 col-md-6">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-body">
@@ -341,15 +387,18 @@ export default function AdminRechargesPage() {
               </div>
             </div>
           </div>
+
         </div>
 
         {/* FILTER */}
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-body">
             <div className="row g-3 align-items-center">
+
               <div className="col-lg-7">
                 <div className="input-group">
                   <span className="input-group-text">🔍</span>
+
                   <input
                     type="text"
                     className="form-control"
@@ -379,6 +428,7 @@ export default function AdminRechargesPage() {
                   {filteredRecharges.length !== 1 ? "s" : ""}
                 </span>
               </div>
+
             </div>
           </div>
         </div>
@@ -386,12 +436,14 @@ export default function AdminRechargesPage() {
         {/* TABLE */}
         <div className="card border-0 shadow-sm">
           <div className="card-body p-0">
+
             {loading ? (
               <div className="text-center py-5">
                 <div
                   className="spinner-border text-primary"
                   role="status"
                 />
+
                 <p className="text-muted mt-3 mb-0">
                   Loading recharge requests...
                 </p>
@@ -399,9 +451,11 @@ export default function AdminRechargesPage() {
             ) : filteredRecharges.length === 0 ? (
               <div className="text-center py-5">
                 <div style={{ fontSize: "50px" }}>💳</div>
+
                 <h5 className="mt-3">
                   No recharge requests found
                 </h5>
+
                 <p className="text-muted mb-0">
                   There are no recharge requests matching your search.
                 </p>
@@ -409,6 +463,7 @@ export default function AdminRechargesPage() {
             ) : (
               <div className="table-responsive">
                 <table className="table table-hover align-middle mb-0">
+
                   <thead className="table-light">
                     <tr>
                       <th className="px-4">ID</th>
@@ -425,6 +480,7 @@ export default function AdminRechargesPage() {
                   <tbody>
                     {filteredRecharges.map((recharge) => (
                       <tr key={recharge.id}>
+
                         <td className="px-4">
                           <strong>#{recharge.id}</strong>
                         </td>
@@ -482,10 +538,11 @@ export default function AdminRechargesPage() {
                         <td className="text-end px-4">
                           {recharge.status === "Pending" ? (
                             <div className="btn-group">
+
                               <button
                                 type="button"
                                 className="btn btn-sm btn-success"
-                                disabled={processingId === recharge.id}
+                                disabled={processingId !== null}
                                 onClick={() =>
                                   approveRecharge(recharge.id)
                                 }
@@ -498,26 +555,31 @@ export default function AdminRechargesPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline-danger"
-                                disabled={processingId === recharge.id}
+                                disabled={processingId !== null}
                                 onClick={() =>
                                   rejectRecharge(recharge.id)
                                 }
                               >
                                 Reject
                               </button>
+
                             </div>
                           ) : (
                             <span className="text-muted">—</span>
                           )}
                         </td>
+
                       </tr>
                     ))}
                   </tbody>
+
                 </table>
               </div>
             )}
+
           </div>
         </div>
+
       </div>
     </div>
   );
