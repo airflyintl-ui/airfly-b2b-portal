@@ -15,7 +15,14 @@ export default function Home() {
       <TravelSlider />
 
       <Hero />
-      <FlightSearch />
+
+      <div
+        id="flight-search"
+        style={{ scrollMarginTop: "90px" }}
+      >
+        <FlightSearch />
+      </div>
+
       <Services />
       <WhyChoose />
       <Stats />
