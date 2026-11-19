@@ -13,8 +13,6 @@ export default function Navbar() {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow sticky-top">
       <div className="container">
-
-        {/* Logo */}
         <Link
           href="/"
           className="navbar-brand fw-bold"
@@ -23,7 +21,6 @@ export default function Navbar() {
           ✈ AIR FLY INTERNATIONAL
         </Link>
 
-        {/* Mobile Menu Button */}
         <button
           className="navbar-toggler"
           type="button"
@@ -41,26 +38,20 @@ export default function Navbar() {
           </span>
         </button>
 
-        {/* Menu */}
         <div
           className={`collapse navbar-collapse ${menuOpen ? "show" : ""}`}
           id="navbarNav"
         >
           <ul className="navbar-nav ms-auto align-items-lg-center">
-
             <li className="nav-item">
-              <Link
-                href="/"
-                className="nav-link"
-                onClick={closeMenu}
-              >
+              <Link href="/" className="nav-link" onClick={closeMenu}>
                 Home
               </Link>
             </li>
 
             <li className="nav-item">
               <Link
-                href="/flights"
+                href="/#flight-search"
                 className="nav-link"
                 onClick={closeMenu}
               >
@@ -69,31 +60,19 @@ export default function Navbar() {
             </li>
 
             <li className="nav-item">
-              <Link
-                href="/visa"
-                className="nav-link"
-                onClick={closeMenu}
-              >
+              <Link href="/visa" className="nav-link" onClick={closeMenu}>
                 Visa
               </Link>
             </li>
 
             <li className="nav-item">
-              <Link
-                href="/hotels"
-                className="nav-link"
-                onClick={closeMenu}
-              >
+              <Link href="/hotels" className="nav-link" onClick={closeMenu}>
                 Hotels
               </Link>
             </li>
 
             <li className="nav-item">
-              <Link
-                href="/contact"
-                className="nav-link"
-                onClick={closeMenu}
-              >
+              <Link href="/contact" className="nav-link" onClick={closeMenu}>
                 Contact
               </Link>
             </li>
@@ -107,10 +86,8 @@ export default function Navbar() {
                 Agent Login
               </Link>
             </li>
-
           </ul>
         </div>
-
       </div>
     </nav>
   );
