@@ -32,11 +32,11 @@ export default function AdminDashboard() {
 
         const data = await response.json();
 
-        if (response.status === 401) {
-          localStorage.removeItem("admin_token");
-          router.replace("/admin/login");
-          return;
-        }
+        if (response.status === 401 || response.status === 403) {
+  localStorage.removeItem("admin_token");
+  router.replace("/admin/login");
+  return;
+}
 
         if (!response.ok || !data.success) {
           setError(data.message || "Unable to load Admin Dashboard.");
