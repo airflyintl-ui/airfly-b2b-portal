@@ -320,8 +320,9 @@ export default function BookingsPage() {
     }
   };
 
+ 
   // =========================================================
-  // PRINT BOOKING
+  // PROFESSIONAL INVOICE / PRINT BOOKING
   // =========================================================
 
   const printBooking = (booking: Booking) => {
@@ -330,207 +331,477 @@ export default function BookingsPage() {
     const printWindow = window.open(
       "",
       "_blank",
-      "width=900,height=700"
+      "width=1000,height=800"
     );
 
     if (!printWindow) {
-      alert(
-        "Popup blocked. Please allow popups for this website."
-      );
-
+      alert("Popup blocked. Please allow popups for this website.");
       return;
     }
+
+    // Safely escape dynamic HTML values
+    const esc = (value: unknown) =>
+      String(value ?? "N/A").replace(/[&<>"']/g, (char) => {
+        const entities: Record<string, string> = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        };
+        return entities[char];
+      });
+
+    const money = (value: string | number) =>
+      Number(value || 0).toLocaleString("en-BD", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+
+    const cancelled =
+      ["cancelled", "canceled"].includes(
+        booking.booking_status?.toLowerCase() || ""
+      );
+
+    const refunded =
+      booking.payment_status?.toLowerCase() === "refunded";
+
+    const watermark =
+      cancelled || refunded
+        ? cancelled && refunded
+          ? "CANCELLED / REFUNDED"
+          : cancelled
+          ? "CANCELLED"
+          : "REFUNDED"
+        : "";
+
+    const invoiceRef = `AFI-${booking.id}-${booking.pnr || "BOOKING"}`;
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-
-        <title>
-          Booking ${booking.pnr}
-        </title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Air Fly Invoice - ${esc(booking.pnr)}</title>
 
         <style>
+          * {
+            box-sizing: border-box;
+          }
 
           body {
-            font-family: Arial, sans-serif;
-            padding: 40px;
-            color: #222;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #263445;
+            background: #f1f4f8;
+            margin: 0;
+            padding: 25px;
+          }
+
+          .invoice {
+            position: relative;
+            max-width: 850px;
+            min-height: 1050px;
+            margin: auto;
+            padding: 42px;
+            background: #fff;
+            overflow: hidden;
+          }
+
+          .watermark {
+            position: absolute;
+            top: 44%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 48px;
+            font-weight: 900;
+            color: rgba(220, 38, 38, 0.12);
+            white-space: nowrap;
+            z-index: 0;
+            pointer-events: none;
+          }
+
+          .content {
+            position: relative;
+            z-index: 1;
           }
 
           .header {
-            text-align: center;
-            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 4px solid #123c72;
+            padding-bottom: 22px;
           }
 
-          .header h1 {
-            margin-bottom: 5px;
+          .brand {
+            color: #123c72;
+            font-size: 27px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            margin-bottom: 7px;
           }
 
-          .pnr {
-            font-size: 22px;
-            font-weight: bold;
-            color: #198754;
+          .brand-sub {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #66758a;
           }
 
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+          .invoice-title {
+            text-align: right;
           }
 
-          th,
-          td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
+          .invoice-title h2 {
+            color: #123c72;
+            margin: 0 0 7px;
+            font-size: 25px;
           }
 
-          th {
-            background: #f5f5f5;
+          .invoice-title p {
+            margin: 4px 0;
+            font-size: 12px;
+            color: #65748b;
+          }
+
+          .status-row {
+            display: flex;
+            gap: 10px;
+            margin: 22px 0;
           }
 
           .status {
+            padding: 7px 13px;
+            border-radius: 4px;
+            font-size: 11px;
             font-weight: bold;
+            text-transform: uppercase;
+            background: #e8edf3;
+          }
+
+          .status.cancelled,
+          .status.refunded {
+            background: #fee2e2;
+            color: #b91c1c;
+          }
+
+          .status.confirmed,
+          .status.paid {
+            background: #dcfce7;
+            color: #166534;
+          }
+
+          .section {
+            margin-top: 25px;
+          }
+
+          .section-title {
+            background: #123c72;
+            color: #fff;
+            padding: 10px 13px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 3px;
+            margin-bottom: 12px;
+          }
+
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 13px 25px;
+            padding: 5px 4px;
+          }
+
+          .field label {
+            display: block;
+            color: #78869a;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+          }
+
+          .field strong {
+            font-size: 13px;
+            color: #263445;
+            overflow-wrap: anywhere;
+          }
+
+          .flight-route {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f1f5fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 10px;
+          }
+
+          .airport {
+            font-size: 25px;
+            font-weight: 900;
+            color: #123c72;
+          }
+
+          .route-arrow {
+            font-size: 24px;
+            color: #8493a7;
+          }
+
+          .amount-box {
+            margin-top: 25px;
+            border: 1px solid #dce3ec;
+            border-radius: 5px;
+            padding: 18px;
+          }
+
+          .amount-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 7px 0;
+          }
+
+          .total-line {
+            border-top: 2px solid #123c72;
+            margin-top: 10px;
+            padding-top: 14px;
+            font-size: 19px;
+            font-weight: bold;
+            color: #123c72;
+          }
+
+          .note {
+            margin-top: 25px;
+            padding: 12px;
+            background: #f8fafc;
+            border-left: 4px solid #64748b;
+            font-size: 11px;
+            color: #526174;
           }
 
           .footer {
-            margin-top: 40px;
+            margin-top: 55px;
+            padding-top: 15px;
+            border-top: 1px solid #dce3ec;
             text-align: center;
-            color: #777;
+            font-size: 10px;
+            line-height: 1.8;
+            color: #78869a;
           }
 
-        </style>
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
 
+          @media print {
+            body {
+              background: #fff;
+              padding: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            .invoice {
+              max-width: none;
+              min-height: auto;
+              padding: 25px;
+              box-shadow: none;
+            }
+
+            .section,
+            .amount-box,
+            .note {
+              break-inside: avoid;
+            }
+          }
+        </style>
       </head>
 
       <body>
+        <div class="invoice">
 
-        <div class="header">
+          ${watermark ? `<div class="watermark">${esc(watermark)}</div>` : ""}
 
-          <h1>
-            AIR FLY INTERNATIONAL
-          </h1>
+          <div class="content">
 
-          <div>
-            Booking Confirmation
+            <div class="header">
+              <div>
+                <div class="brand">AIR FLY INTERNATIONAL</div>
+                <div class="brand-sub">TRAVEL & TOURISM SERVICES</div>
+              </div>
+
+              <div class="invoice-title">
+                <h2>INVOICE</h2>
+                <p>Document Ref: ${esc(invoiceRef)}</p>
+                <p>Booking Date: ${esc(formatDate(booking.created_at))}</p>
+                <p>PNR: <strong>${esc(booking.pnr)}</strong></p>
+              </div>
+            </div>
+
+            <div class="status-row">
+              <span class="status ${esc(booking.payment_status?.toLowerCase())}">
+                Payment: ${esc(booking.payment_status)}
+              </span>
+
+              <span class="status ${esc(booking.booking_status?.toLowerCase())}">
+                Booking: ${esc(booking.booking_status)}
+              </span>
+            </div>
+
+            <div class="section">
+              <div class="section-title">PASSENGER INFORMATION</div>
+
+              <div class="info-grid">
+                <div class="field">
+                  <label>Passenger Name</label>
+                  <strong>${esc(booking.passenger_name)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Passport Number</label>
+                  <strong>${esc(booking.passport)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Nationality</label>
+                  <strong>${esc(booking.nationality)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Date of Birth</label>
+                  <strong>${esc(formatDate(booking.date_of_birth))}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Phone</label>
+                  <strong>${esc(booking.phone)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Email</label>
+                  <strong>${esc(booking.email)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">FLIGHT INFORMATION</div>
+
+              <div class="flight-route">
+                <div>
+                  <div class="airport">${esc(flight?.from)}</div>
+                  <small>Departure</small>
+                </div>
+
+                <div class="route-arrow">✈ →</div>
+
+                <div style="text-align:right">
+                  <div class="airport">${esc(flight?.to)}</div>
+                  <small>Arrival</small>
+                </div>
+              </div>
+
+              <div class="info-grid" style="margin-top:15px">
+                <div class="field">
+                  <label>Flight Number</label>
+                  <strong>${esc(flight?.flight_no)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Ticket Number</label>
+                  <strong>${esc(booking.ticket_number)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Departure</label>
+                  <strong>${esc(formatDateTime(flight?.departure_time))}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Arrival</label>
+                  <strong>${esc(formatDateTime(flight?.arrival_time))}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Journey Type</label>
+                  <strong>${esc(booking.journey_type)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Travel Class</label>
+                  <strong>${esc(booking.travel_class)}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-title">BOOKING & FARE SUMMARY</div>
+
+              <div class="info-grid">
+                <div class="field">
+                  <label>Adults</label>
+                  <strong>${esc(booking.adults ?? 0)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Children</label>
+                  <strong>${esc(booking.children ?? 0)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>Infants</label>
+                  <strong>${esc(booking.infants ?? 0)}</strong>
+                </div>
+
+                <div class="field">
+                  <label>PNR</label>
+                  <strong>${esc(booking.pnr)}</strong>
+                </div>
+              </div>
+
+              <div class="amount-box">
+                <div class="amount-line">
+                  <span>Booking Amount</span>
+                  <strong>৳ ${money(booking.total_amount)}</strong>
+                </div>
+
+                <div class="amount-line total-line">
+                  <span>TOTAL AMOUNT</span>
+                  <span>৳ ${money(booking.total_amount)}</span>
+                </div>
+              </div>
+            </div>
+
+            ${
+              watermark
+                ? `<div class="note">
+                    <strong>IMPORTANT NOTICE:</strong>
+                    This booking is ${esc(watermark)}.
+                    This document is for booking and payment record purposes only.
+                    It is not a valid travel ticket.
+                  </div>`
+                : `<div class="note">
+                    Please verify passenger and flight details before travel.
+                    This invoice alone does not confirm ticket issuance.
+                  </div>`
+            }
+
+            <div class="footer">
+              <strong>AIR FLY INTERNATIONAL</strong><br />
+              Generated from Air Fly International B2B Portal<br />
+              This is a computer-generated document.
+            </div>
+
           </div>
-
-          <div class="pnr">
-            PNR: ${booking.pnr || "N/A"}
-          </div>
-
-        </div>
-
-        <table>
-
-          <tr>
-            <th>Passenger Name</th>
-            <td>${booking.passenger_name || "N/A"}</td>
-          </tr>
-
-          <tr>
-            <th>Passport</th>
-            <td>${booking.passport || "N/A"}</td>
-          </tr>
-
-          <tr>
-            <th>Nationality</th>
-            <td>${booking.nationality || "N/A"}</td>
-          </tr>
-
-          <tr>
-            <th>Flight</th>
-            <td>${flight?.flight_no || "N/A"}</td>
-          </tr>
-
-          <tr>
-            <th>Route</th>
-            <td>
-              ${flight?.from || "N/A"}
-              →
-              ${flight?.to || "N/A"}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Departure</th>
-            <td>
-              ${formatDateTime(
-                flight?.departure_time
-              )}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Arrival</th>
-            <td>
-              ${formatDateTime(
-                flight?.arrival_time
-              )}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Travel Class</th>
-            <td>
-              ${booking.travel_class || "N/A"}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Journey Type</th>
-            <td>
-              ${booking.journey_type || "N/A"}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Ticket Number</th>
-            <td>
-              ${booking.ticket_number || "N/A"}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Total Amount</th>
-            <td>
-              ৳ ${Number(
-                booking.total_amount || 0
-              ).toLocaleString()}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Payment Status</th>
-            <td class="status">
-              ${booking.payment_status || "N/A"}
-            </td>
-          </tr>
-
-          <tr>
-            <th>Booking Status</th>
-            <td class="status">
-              ${booking.booking_status || "N/A"}
-            </td>
-          </tr>
-
-        </table>
-
-        <div class="footer">
-
-          <p>
-            Generated from Air Fly International B2B Portal
-          </p>
-
         </div>
 
         <script>
           window.onload = function () {
+            window.focus();
             window.print();
           };
         </script>
-
       </body>
       </html>
     `);
