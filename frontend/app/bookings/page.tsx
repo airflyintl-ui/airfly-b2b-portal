@@ -321,6 +321,7 @@ export default function BookingsPage() {
   };
 
  
+ 
   // =========================================================
   // PROFESSIONAL INVOICE / PRINT BOOKING
   // =========================================================
@@ -377,6 +378,9 @@ export default function BookingsPage() {
 
     const invoiceRef = `AFI-${booking.id}-${booking.pnr || "BOOKING"}`;
 
+    const logoUrl =
+      "https://raw.githubusercontent.com/airflyintl-ui/airfly-b2b-portal/main/frontend/public/images/logo.jpg";
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -401,7 +405,6 @@ export default function BookingsPage() {
           .invoice {
             position: relative;
             max-width: 850px;
-            
             margin: auto;
             padding: 42px;
             background: #fff;
@@ -432,18 +435,32 @@ export default function BookingsPage() {
             align-items: flex-start;
             border-bottom: 4px solid #123c72;
             padding-bottom: 22px;
+            gap: 15px;
+          }
+
+          .brand-row {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+          }
+
+          .brand-logo {
+            width: 115px;
+            height: 75px;
+            object-fit: contain;
+            display: block;
           }
 
           .brand {
             color: #123c72;
-            font-size: 27px;
+            font-size: 22px;
             font-weight: 900;
             letter-spacing: 1px;
             margin-bottom: 7px;
           }
 
           .brand-sub {
-            font-size: 11px;
+            font-size: 10px;
             letter-spacing: 2px;
             color: #66758a;
           }
@@ -480,6 +497,7 @@ export default function BookingsPage() {
           }
 
           .status.cancelled,
+          .status.canceled,
           .status.refunded {
             background: #fee2e2;
             color: #b91c1c;
@@ -603,11 +621,11 @@ export default function BookingsPage() {
             }
 
             .invoice {
-             max-width: none;
-             min-height: 0;
-             padding: 15px;
-             box-shadow: none;
-           }
+              max-width: none;
+              min-height: 0;
+              padding: 15px;
+              box-shadow: none;
+            }
 
             .section,
             .amount-box,
@@ -626,9 +644,19 @@ export default function BookingsPage() {
           <div class="content">
 
             <div class="header">
-              <div>
-                <div class="brand">AIR FLY INTERNATIONAL</div>
-                <div class="brand-sub">TRAVEL & TOURISM SERVICES</div>
+
+              <div class="brand-row">
+                <img
+                  id="invoice-logo"
+                  class="brand-logo"
+                  src="${logoUrl}"
+                  alt="Air Fly International Logo"
+                />
+
+                <div>
+                  <div class="brand">AIR FLY INTERNATIONAL</div>
+                  <div class="brand-sub">TRAVEL & TOURISM SERVICES</div>
+                </div>
               </div>
 
               <div class="invoice-title">
@@ -637,6 +665,7 @@ export default function BookingsPage() {
                 <p>Booking Date: ${esc(formatDate(booking.created_at))}</p>
                 <p>PNR: <strong>${esc(booking.pnr)}</strong></p>
               </div>
+
             </div>
 
             <div class="status-row">
@@ -797,7 +826,17 @@ export default function BookingsPage() {
         </div>
 
         <script>
-          window.onload = function () {
+          window.onload = async function () {
+            const logo = document.getElementById("invoice-logo");
+
+            if (logo && !logo.complete) {
+              await new Promise((resolve) => {
+                logo.onload = resolve;
+                logo.onerror = resolve;
+                setTimeout(resolve, 3000);
+              });
+            }
+
             window.focus();
             window.print();
           };
