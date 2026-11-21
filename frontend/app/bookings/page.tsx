@@ -401,7 +401,7 @@ export default function BookingsPage() {
           .invoice {
             position: relative;
             max-width: 850px;
-            min-height: 1050px;
+            
             margin: auto;
             padding: 42px;
             background: #fff;
@@ -580,8 +580,8 @@ export default function BookingsPage() {
           }
 
           .footer {
-            margin-top: 55px;
-            padding-top: 15px;
+            margin-top: 25px;
+            padding-top: 25px;
             border-top: 1px solid #dce3ec;
             text-align: center;
             font-size: 10px;
@@ -603,11 +603,11 @@ export default function BookingsPage() {
             }
 
             .invoice {
-              max-width: none;
-              min-height: auto;
-              padding: 25px;
-              box-shadow: none;
-            }
+             max-width: none;
+             min-height: 0;
+             padding: 15px;
+             box-shadow: none;
+           }
 
             .section,
             .amount-box,
