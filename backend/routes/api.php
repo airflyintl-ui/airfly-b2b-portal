@@ -1,6 +1,8 @@
+
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminAuthController;
@@ -176,5 +178,27 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         '/recharges/{id}/reject',
         [RechargeController::class, 'reject']
     );
+
+
+    // ==================================================
+    // TEMPORARY: RUN SYSTEM SETTINGS MIGRATION
+    // ==================================================
+
+    Route::post('/admin/run-settings-migration', function () {
+
+        $exitCode = Artisan::call('migrate', [
+            '--path' => 'database/migrations/2026_11_21_000000_create_system_settings_table.php',
+            '--force' => true,
+        ]);
+
+        return response()->json([
+            'success' => $exitCode === 0,
+            'message' => $exitCode === 0
+                ? 'System settings migration completed.'
+                : 'Migration failed.',
+            'output' => Artisan::output(),
+        ], $exitCode === 0 ? 200 : 500);
+
+    });
 
 });
