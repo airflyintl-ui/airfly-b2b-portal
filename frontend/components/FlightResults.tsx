@@ -1358,11 +1358,21 @@ export default function FlightSearch() {
                     )}
 
                     {allSegmentsSelected && (
-                      <div className="alert alert-success mt-3 mb-0">
-                        All segments selected. Total itinerary
-                        price calculated successfully.
-                      </div>
-                    )}
+  <>
+    <div className="alert alert-success mt-3 mb-3">
+      All segments selected. Total itinerary
+      price calculated successfully.
+    </div>
+
+    <button
+      type="button"
+      className="btn btn-success btn-lg w-100"
+      onClick={continueToPassengerDetails}
+    >
+      Review & Passenger Details →
+    </button>
+  </>
+)}
                   </div>
                 </div>
 
