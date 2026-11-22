@@ -10,6 +10,8 @@ type FlightSegment = {
   departure_date: string;
 };
 
+type SelectedOffers = Record<number, string>;
+
 export default function FlightSearch() {
   const [tripType, setTripType] = useState<TripType>("oneway");
 
@@ -24,13 +26,16 @@ export default function FlightSearch() {
   });
 
   const [segments, setSegments] = useState<FlightSegment[]>([
-    { from: "", to: "", departure_date: "" },
-    { from: "", to: "", departure_date: "" },
+    { from: "DAC", to: "DXB", departure_date: "" },
+    { from: "DXB", to: "BKK", departure_date: "" },
   ]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<any>(null);
+
+  const [selectedOffers, setSelectedOffers] =
+    useState<SelectedOffers>({});
 
   const today = new Date().toLocaleDateString("en-CA");
 
@@ -77,7 +82,11 @@ export default function FlightSearch() {
 
     setSegments((prev) => [
       ...prev,
-      { from: "", to: "", departure_date: "" },
+      {
+        from: prev[prev.length - 1]?.to || "",
+        to: "",
+        departure_date: "",
+      },
     ]);
   };
 
@@ -85,6 +94,9 @@ export default function FlightSearch() {
     if (segments.length <= 2) return;
 
     setSegments((prev) => prev.filter((_, i) => i !== index));
+
+    setSelectedOffers({});
+    setResults(null);
   };
 
   const validateAirport = (code: string) =>
@@ -118,6 +130,11 @@ export default function FlightSearch() {
 
     return `${hours}h ${minutes}m`;
   };
+
+  const formatBDT = (amount: number) =>
+    `৳${amount.toLocaleString("en-BD", {
+      maximumFractionDigits: 2,
+    })}`;
 
   const getBaggage = (bagsPrice: any) => {
     if (!bagsPrice || typeof bagsPrice !== "object") {
@@ -188,9 +205,7 @@ export default function FlightSearch() {
                 </div>
                 <div className="small text-muted">
                   {segment.cabin_class || "Cabin not specified"}
-                  {segment.aircraft
-                    ? ` · ${segment.aircraft}`
-                    : ""}
+                  {segment.aircraft ? ` · ${segment.aircraft}` : ""}
                 </div>
               </div>
             </div>
@@ -213,9 +228,56 @@ export default function FlightSearch() {
     );
   };
 
+  /*
+   * Multi-City selected offer calculations
+   */
+
+  const multiSegments = results?.data?.segments || [];
+
+  const selectedMultiOffers = multiSegments.map(
+    (segment: any, index: number) => {
+      const offerId = selectedOffers[index];
+
+      return (segment.offers || []).find(
+        (offer: any) => offer.id === offerId
+      );
+    }
+  );
+
+  const selectedCount = selectedMultiOffers.filter(Boolean).length;
+
+  const allSegmentsSelected =
+    multiSegments.length > 0 &&
+    selectedCount === multiSegments.length;
+
+  const totalSupplierUSD = selectedMultiOffers.reduce(
+    (total: number, offer: any) =>
+      total + (offer ? Number(offer.price || 0) : 0),
+    0
+  );
+
+  const exchangeRate = Number(
+    results?.pricing?.exchange_rate || 0
+  );
+
+  const serviceCharge = Number(
+    results?.pricing?.service_charge || 0
+  );
+
+  const subtotalBDT = totalSupplierUSD * exchangeRate;
+
+  const totalAirFlyPrice = allSegmentsSelected
+    ? subtotalBDT + serviceCharge
+    : null;
+
+  /*
+   * Search
+   */
+
   const searchFlight = async () => {
     setError("");
     setResults(null);
+    setSelectedOffers({});
 
     if (Number(form.adults) < 1) {
       setError("At least one adult passenger is required.");
@@ -227,59 +289,118 @@ export default function FlightSearch() {
       return;
     }
 
+    let searchData: any;
+
     if (tripType === "multicity") {
-      setError(
-        "Multi-City search is not available in the current LetsFG integration. Please use One Way or Round Trip."
-      );
-      return;
-    }
-
-    const from = form.from.trim().toUpperCase();
-    const to = form.to.trim().toUpperCase();
-
-    if (!validateAirport(from) || !validateAirport(to)) {
-      setError("Please enter valid 3-letter airport codes.");
-      return;
-    }
-
-    if (from === to) {
-      setError("Origin and destination cannot be the same.");
-      return;
-    }
-
-    if (!form.departure_date) {
-      setError("Please select departure date.");
-      return;
-    }
-
-    if (form.departure_date < today) {
-      setError("Departure date cannot be in the past.");
-      return;
-    }
-
-    if (tripType === "roundtrip") {
-      if (!form.return_date) {
-        setError("Please select return date.");
+      if (segments.length < 2 || segments.length > 6) {
+        setError("Multi-City requires 2 to 6 flight segments.");
         return;
       }
 
-      if (form.return_date < form.departure_date) {
-        setError("Return date cannot be before departure date.");
+      for (let i = 0; i < segments.length; i++) {
+        const segment = segments[i];
+
+        const from = segment.from.trim().toUpperCase();
+        const to = segment.to.trim().toUpperCase();
+
+        if (!validateAirport(from) || !validateAirport(to)) {
+          setError(`Please enter valid airport codes for Flight ${i + 1}.`);
+          return;
+        }
+
+        if (from === to) {
+          setError(`Origin and destination cannot be the same in Flight ${i + 1}.`);
+          return;
+        }
+
+        if (!segment.departure_date) {
+          setError(`Please select departure date for Flight ${i + 1}.`);
+          return;
+        }
+
+        if (segment.departure_date < today) {
+          setError(`Flight ${i + 1} date cannot be in the past.`);
+          return;
+        }
+
+        if (i > 0) {
+          const previous = segments[i - 1];
+
+          if (from !== previous.to.trim().toUpperCase()) {
+            setError(
+              `Flight ${i + 1} must start from the previous flight's destination (${previous.to.toUpperCase()}).`
+            );
+            return;
+          }
+
+          if (segment.departure_date < previous.departure_date) {
+            setError("Multi-City flight dates must be in chronological order.");
+            return;
+          }
+        }
+      }
+
+      searchData = {
+        trip_type: "multicity",
+
+        segments: segments.map((segment) => ({
+          from: segment.from.trim().toUpperCase(),
+          to: segment.to.trim().toUpperCase(),
+          departure_date: segment.departure_date,
+        })),
+
+        adults: Number(form.adults),
+        children: Number(form.children),
+        infants: Number(form.infants),
+      };
+    } else {
+      const from = form.from.trim().toUpperCase();
+      const to = form.to.trim().toUpperCase();
+
+      if (!validateAirport(from) || !validateAirport(to)) {
+        setError("Please enter valid 3-letter airport codes.");
         return;
       }
-    }
 
-    const searchData = {
-      trip_type: tripType,
-      from,
-      to,
-      departure_date: form.departure_date,
-      return_date:
-        tripType === "roundtrip" ? form.return_date : null,
-      adults: Number(form.adults),
-      children: Number(form.children),
-      infants: Number(form.infants),
-    };
+      if (from === to) {
+        setError("Origin and destination cannot be the same.");
+        return;
+      }
+
+      if (!form.departure_date) {
+        setError("Please select departure date.");
+        return;
+      }
+
+      if (form.departure_date < today) {
+        setError("Departure date cannot be in the past.");
+        return;
+      }
+
+      if (tripType === "roundtrip") {
+        if (!form.return_date) {
+          setError("Please select return date.");
+          return;
+        }
+
+        if (form.return_date < form.departure_date) {
+          setError("Return date cannot be before departure date.");
+          return;
+        }
+      }
+
+      searchData = {
+        trip_type: tripType,
+        from,
+        to,
+        departure_date: form.departure_date,
+        return_date:
+          tripType === "roundtrip" ? form.return_date : null,
+        adults: Number(form.adults),
+        children: Number(form.children),
+        infants: Number(form.infants),
+      };
+    }
 
     setLoading(true);
 
@@ -324,7 +445,25 @@ export default function FlightSearch() {
     }
   };
 
+  /*
+   * Normal One Way / Round Trip offers
+   */
+
   const offers = results?.data?.offers || [];
+
+  /*
+   * Select Multi-City offer
+   */
+
+  const selectMultiOffer = (
+    segmentIndex: number,
+    offerId: string
+  ) => {
+    setSelectedOffers((prev) => ({
+      ...prev,
+      [segmentIndex]: offerId,
+    }));
+  };
 
   return (
     <div className="card border-0 shadow-lg">
@@ -334,6 +473,7 @@ export default function FlightSearch() {
       </div>
 
       <div className="card-body p-4">
+
         {/* Trip Type */}
 
         <div className="d-flex flex-wrap gap-4 mb-4">
@@ -348,6 +488,7 @@ export default function FlightSearch() {
                     setTripType(type);
                     setError("");
                     setResults(null);
+                    setSelectedOffers({});
                   }}
                 />
 
@@ -423,7 +564,7 @@ export default function FlightSearch() {
           </div>
         )}
 
-        {/* Multi-City */}
+        {/* Multi-City Search Form */}
 
         {tripType === "multicity" && (
           <div className="mb-4">
@@ -461,11 +602,7 @@ export default function FlightSearch() {
                       maxLength={3}
                       value={segment.from}
                       onChange={(e) =>
-                        handleSegmentChange(
-                          index,
-                          "from",
-                          e.target.value
-                        )
+                        handleSegmentChange(index, "from", e.target.value)
                       }
                     />
                   </div>
@@ -478,11 +615,7 @@ export default function FlightSearch() {
                       maxLength={3}
                       value={segment.to}
                       onChange={(e) =>
-                        handleSegmentChange(
-                          index,
-                          "to",
-                          e.target.value
-                        )
+                        handleSegmentChange(index, "to", e.target.value)
                       }
                     />
                   </div>
@@ -592,6 +725,7 @@ export default function FlightSearch() {
 
         {results && (
           <div className="mt-4">
+
             <div className="d-flex flex-wrap justify-content-between align-items-center mb-3">
               <div>
                 <h5 className="fw-bold mb-1">
@@ -599,8 +733,11 @@ export default function FlightSearch() {
                 </h5>
 
                 <small className="text-muted">
-                  {results.search?.from || form.from} →{" "}
-                  {results.search?.to || form.to}
+                  {results.search?.trip_type === "multicity"
+                    ? `${multiSegments.length} Multi-City Segments`
+                    : `${results.search?.from || form.from} → ${
+                        results.search?.to || form.to
+                      }`}
                 </small>
               </div>
 
@@ -626,171 +763,475 @@ export default function FlightSearch() {
               <div>
                 Service Charge:{" "}
                 <strong>
-                  ৳
-                  {Number(
-                    results.pricing?.service_charge || 0
-                  ).toLocaleString("en-BD")}
+                  {formatBDT(
+                    Number(results.pricing?.service_charge || 0)
+                  )}
                 </strong>
               </div>
 
-              <div>
-                Total Offers: <strong>{offers.length}</strong>
-              </div>
+              {results.search?.trip_type !== "multicity" && (
+                <div>
+                  Total Offers: <strong>{offers.length}</strong>
+                </div>
+              )}
             </div>
 
-            {offers.length === 0 && (
-              <div className="alert alert-secondary">
-                No flight offers found for this search.
-              </div>
-            )}
+            {/* MULTI-CITY RESULTS */}
 
-            {offers.map((offer: any, index: number) => {
-              const outbound = offer.outbound;
-              const firstSegment = outbound?.segments?.[0];
+            {results.search?.trip_type === "multicity" && (
+              <div>
 
-              const airline =
-                firstSegment?.airline_name ||
-                firstSegment?.airline ||
-                offer.owner_airline ||
-                "Airline";
+                <div className="alert alert-primary">
+                  <h5 className="fw-bold mb-1">
+                    Multi-City Flight Selection
+                  </h5>
 
-              const flightNumbers = (outbound?.segments || [])
-                .map((segment: any) => segment.flight_no)
-                .filter(Boolean)
-                .join(", ");
+                  <div>
+                    Selected Flights:{" "}
+                    <strong>
+                      {selectedCount} / {multiSegments.length}
+                    </strong>
+                  </div>
 
-              const price = Number(offer.airfly_price_bdt);
-              const supplierPrice = Number(offer.price);
+                  <small>
+                    Select one flight from each segment to calculate
+                    your complete itinerary price.
+                  </small>
+                </div>
 
-              const refundable =
-                offer.conditions?.refundable || "Not specified";
+                {multiSegments.map((segment: any, index: number) => {
+                  const segmentOffers = segment.offers || [];
+                  const selectedId = selectedOffers[index];
 
-              const changeable =
-                offer.conditions?.changeable || "Not specified";
+                  return (
+                    <div
+                      key={`${segment.from}-${segment.to}-${index}`}
+                      className="card border shadow-sm mb-4"
+                    >
+                      <div className="card-header bg-light p-3">
+                        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                          <h5 className="fw-bold mb-0">
+                            Flight {segment.segment_number}:{" "}
+                            {segment.from} → {segment.to}
+                          </h5>
 
-              const seats = offer.availability_seats;
-
-              return (
-                <div
-                  key={offer.id || offer.offer_id || index}
-                  className="card border shadow-sm mb-3"
-                >
-                  <div className="card-body p-3 p-md-4">
-                    <div className="row align-items-center g-3">
-                      <div className="col-md-4">
-                        <h5 className="fw-bold mb-1">
-                          {airline}
-                        </h5>
-
-                        <div className="text-muted small">
-                          Flight: {flightNumbers || "Not available"}
-                        </div>
-
-                        <div className="mt-2">
-                          <span className="badge bg-light text-dark border">
-                            {refundable}
+                          <span className="badge bg-primary">
+                            {segment.departure_date}
                           </span>
                         </div>
 
-                        <div className="small text-muted mt-2">
-                          Change: {changeable}
-                        </div>
+                        <small className="text-muted">
+                          {segmentOffers.length} offers found
+                        </small>
                       </div>
 
-                      <div className="col-md-4">
-                        <div className="fw-bold">
-                          {firstSegment?.origin ||
-                            results.search?.from ||
-                            form.from}
-                          {" → "}
-                          {outbound?.segments?.[
-                            outbound.segments.length - 1
-                          ]?.destination ||
-                            results.search?.to ||
-                            form.to}
-                        </div>
+                      <div className="card-body p-3">
 
-                        <div className="small text-muted mt-2">
-                          <div>
-                            <strong>Departure:</strong>{" "}
-                            {formatDate(firstSegment?.departure)}
+                        {segmentOffers.length === 0 && (
+                          <div className="alert alert-secondary mb-0">
+                            No offers found for this segment.
                           </div>
+                        )}
 
-                          <div>
-                            <strong>Arrival:</strong>{" "}
-                            {formatDate(
-                              outbound?.segments?.[
-                                outbound.segments.length - 1
-                              ]?.arrival
-                            )}
-                          </div>
+                        {segmentOffers.map((offer: any, offerIndex: number) => {
+                          const outbound = offer.outbound;
+                          const flightParts = outbound?.segments || [];
+                          const firstSegment = flightParts[0];
+                          const lastSegment =
+                            flightParts[flightParts.length - 1];
 
-                          <div>
-                            <strong>Duration:</strong>{" "}
-                            {formatDuration(
-                              outbound?.total_duration_seconds
-                            )}
-                          </div>
+                          const airline =
+                            firstSegment?.airline_name ||
+                            firstSegment?.airline ||
+                            offer.owner_airline ||
+                            "Airline";
 
-                          <div>
-                            <strong>Stops:</strong>{" "}
-                            {outbound?.stopovers ??
-                              Math.max(
-                                0,
-                                (outbound?.segments?.length || 1) - 1
-                              )}
-                          </div>
-                        </div>
-                      </div>
+                          const flightNumbers = flightParts
+                            .map((item: any) => item.flight_no)
+                            .filter(Boolean)
+                            .join(", ");
 
-                      <div className="col-md-4 text-md-end">
-                        <div className="text-muted small">
-                          AirFly Selling Price
-                        </div>
+                          const supplierPrice = Number(offer.price);
+                          const estimatedBDT =
+                            supplierPrice * exchangeRate;
 
-                        <h4 className="text-primary fw-bold mb-1">
-                          {Number.isFinite(price)
-                            ? `৳${price.toLocaleString("en-BD")}`
-                            : "Price unavailable"}
-                        </h4>
+                          const isSelected = selectedId === offer.id;
 
-                        <div className="small text-muted">
-                          {Number.isFinite(supplierPrice)
-                            ? `Supplier Fare: $${supplierPrice.toFixed(2)} USD`
-                            : ""}
-                        </div>
+                          return (
+                            <div
+                              key={offer.id || offerIndex}
+                              className={`card mb-3 ${
+                                isSelected
+                                  ? "border-primary border-2"
+                                  : "border"
+                              }`}
+                            >
+                              <div className="card-body p-3">
 
-                        <div className="small mt-2">
-                          <strong>Baggage:</strong>{" "}
-                          {getBaggage(offer.bags_price)}
-                        </div>
+                                <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                  <div>
+                                    <h6 className="fw-bold mb-1">
+                                      {airline}
+                                    </h6>
 
-                        <div className="small text-muted mt-1">
-                          Availability:{" "}
-                          {seats != null
-                            ? `${seats} seats`
-                            : "Not specified"}
-                        </div>
+                                    <div className="small text-muted">
+                                      Flight: {flightNumbers || "Not available"}
+                                    </div>
+                                  </div>
 
-                        <div className="small text-muted mt-1">
-                          Cabin:{" "}
-                          {firstSegment?.cabin_class || "Not specified"}
-                        </div>
+                                  {isSelected && (
+                                    <span className="badge bg-success">
+                                      Selected
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="row g-3 mt-1">
+                                  <div className="col-md-4">
+                                    <div className="small text-muted">
+                                      Departure
+                                    </div>
+
+                                    <strong>
+                                      {firstSegment?.origin || segment.from}
+                                    </strong>
+
+                                    <div className="small">
+                                      {formatDate(firstSegment?.departure)}
+                                    </div>
+                                  </div>
+
+                                  <div className="col-md-4">
+                                    <div className="small text-muted">
+                                      Arrival
+                                    </div>
+
+                                    <strong>
+                                      {lastSegment?.destination || segment.to}
+                                    </strong>
+
+                                    <div className="small">
+                                      {formatDate(lastSegment?.arrival)}
+                                    </div>
+                                  </div>
+
+                                  <div className="col-md-4">
+                                    <div className="small text-muted">
+                                      Duration
+                                    </div>
+
+                                    <strong>
+                                      {formatDuration(
+                                        outbound?.total_duration_seconds
+                                      )}
+                                    </strong>
+
+                                    <div className="small text-muted">
+                                      Stops: {outbound?.stopovers ?? 0}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-3">
+                                  {renderItinerary(
+                                    outbound,
+                                    "Flight Itinerary"
+                                  )}
+                                </div>
+
+                                <div className="row align-items-center mt-3 g-2">
+                                  <div className="col-md-6">
+                                    <div className="small text-muted">
+                                      Supplier Fare
+                                    </div>
+
+                                    <strong>
+                                      ${supplierPrice.toFixed(2)} USD
+                                    </strong>
+
+                                    <div className="small text-muted">
+                                      Estimated BDT before service charge:{" "}
+                                      {formatBDT(estimatedBDT)}
+                                    </div>
+
+                                    <div className="small text-muted mt-1">
+                                      Baggage: {getBaggage(offer.bags_price)}
+                                    </div>
+
+                                    <div className="small text-muted">
+                                      {offer.conditions?.refundable ||
+                                        "Refundability not specified"}
+                                    </div>
+                                  </div>
+
+                                  <div className="col-md-6 text-md-end">
+                                    <button
+                                      type="button"
+                                      className={`btn ${
+                                        isSelected
+                                          ? "btn-success"
+                                          : "btn-outline-primary"
+                                      }`}
+                                      onClick={() =>
+                                        selectMultiOffer(index, offer.id)
+                                      }
+                                    >
+                                      {isSelected
+                                        ? "✓ Selected"
+                                        : "Select This Flight"}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="small text-muted mt-2">
+                                  Offer ID: {offer.id}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
+                  );
+                })}
 
-                    {renderItinerary(outbound, "Outbound Flight")}
+                {/* MULTI-CITY PRICE SUMMARY */}
 
-                    {offer.inbound &&
-                      renderItinerary(offer.inbound, "Return Flight")}
+                <div className="card border-primary shadow-sm mt-4">
+                  <div className="card-header bg-primary text-white p-3">
+                    <h5 className="fw-bold mb-0">
+                      Multi-City Price Summary
+                    </h5>
+                  </div>
 
-                    <div className="small text-muted mt-3">
-                      Offer ID: {offer.id || "Not available"}
+                  <div className="card-body p-3 p-md-4">
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Selected Segments</span>
+                      <strong>
+                        {selectedCount} / {multiSegments.length}
+                      </strong>
                     </div>
+
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Total Supplier Fare</span>
+                      <strong>
+                        ${totalSupplierUSD.toFixed(2)} USD
+                      </strong>
+                    </div>
+
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Exchange Rate</span>
+                      <strong>{exchangeRate}</strong>
+                    </div>
+
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Supplier Fare in BDT</span>
+                      <strong>{formatBDT(subtotalBDT)}</strong>
+                    </div>
+
+                    <div className="d-flex justify-content-between mb-3">
+                      <span>Service Charge (once per itinerary)</span>
+                      <strong>
+                        {allSegmentsSelected
+                          ? formatBDT(serviceCharge)
+                          : "Added after all selections"}
+                      </strong>
+                    </div>
+
+                    <hr />
+
+                    <div className="d-flex justify-content-between align-items-center gap-2">
+                      <h5 className="fw-bold mb-0">
+                        Total AirFly Price
+                      </h5>
+
+                      <h4 className="fw-bold text-primary mb-0">
+                        {totalAirFlyPrice !== null
+                          ? formatBDT(totalAirFlyPrice)
+                          : "Pending"}
+                      </h4>
+                    </div>
+
+                    {!allSegmentsSelected && (
+                      <div className="alert alert-info mt-3 mb-0">
+                        Please select one flight from every segment
+                        to calculate the final AirFly price.
+                      </div>
+                    )}
+
+                    {allSegmentsSelected && (
+                      <div className="alert alert-success mt-3 mb-0">
+                        All segments selected. Total itinerary price
+                        calculated successfully.
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
+
+              </div>
+            )}
+
+            {/* ONE WAY / ROUND TRIP RESULTS */}
+
+            {results.search?.trip_type !== "multicity" && (
+              <>
+                {offers.length === 0 && (
+                  <div className="alert alert-secondary">
+                    No flight offers found for this search.
+                  </div>
+                )}
+
+                {offers.map((offer: any, index: number) => {
+                  const outbound = offer.outbound;
+                  const firstSegment = outbound?.segments?.[0];
+
+                  const airline =
+                    firstSegment?.airline_name ||
+                    firstSegment?.airline ||
+                    offer.owner_airline ||
+                    "Airline";
+
+                  const flightNumbers = (outbound?.segments || [])
+                    .map((segment: any) => segment.flight_no)
+                    .filter(Boolean)
+                    .join(", ");
+
+                  const price = Number(offer.airfly_price_bdt);
+                  const supplierPrice = Number(offer.price);
+
+                  const refundable =
+                    offer.conditions?.refundable || "Not specified";
+
+                  const changeable =
+                    offer.conditions?.changeable || "Not specified";
+
+                  const seats = offer.availability_seats;
+
+                  return (
+                    <div
+                      key={offer.id || offer.offer_id || index}
+                      className="card border shadow-sm mb-3"
+                    >
+                      <div className="card-body p-3 p-md-4">
+                        <div className="row align-items-center g-3">
+                          <div className="col-md-4">
+                            <h5 className="fw-bold mb-1">
+                              {airline}
+                            </h5>
+
+                            <div className="text-muted small">
+                              Flight: {flightNumbers || "Not available"}
+                            </div>
+
+                            <div className="mt-2">
+                              <span className="badge bg-light text-dark border">
+                                {refundable}
+                              </span>
+                            </div>
+
+                            <div className="small text-muted mt-2">
+                              Change: {changeable}
+                            </div>
+                          </div>
+
+                          <div className="col-md-4">
+                            <div className="fw-bold">
+                              {firstSegment?.origin ||
+                                results.search?.from ||
+                                form.from}
+                              {" → "}
+                              {outbound?.segments?.[
+                                outbound.segments.length - 1
+                              ]?.destination ||
+                                results.search?.to ||
+                                form.to}
+                            </div>
+
+                            <div className="small text-muted mt-2">
+                              <div>
+                                <strong>Departure:</strong>{" "}
+                                {formatDate(firstSegment?.departure)}
+                              </div>
+
+                              <div>
+                                <strong>Arrival:</strong>{" "}
+                                {formatDate(
+                                  outbound?.segments?.[
+                                    outbound.segments.length - 1
+                                  ]?.arrival
+                                )}
+                              </div>
+
+                              <div>
+                                <strong>Duration:</strong>{" "}
+                                {formatDuration(
+                                  outbound?.total_duration_seconds
+                                )}
+                              </div>
+
+                              <div>
+                                <strong>Stops:</strong>{" "}
+                                {outbound?.stopovers ??
+                                  Math.max(
+                                    0,
+                                    (outbound?.segments?.length || 1) - 1
+                                  )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="col-md-4 text-md-end">
+                            <div className="text-muted small">
+                              AirFly Selling Price
+                            </div>
+
+                            <h4 className="text-primary fw-bold mb-1">
+                              {Number.isFinite(price)
+                                ? formatBDT(price)
+                                : "Price unavailable"}
+                            </h4>
+
+                            <div className="small text-muted">
+                              {Number.isFinite(supplierPrice)
+                                ? `Supplier Fare: $${supplierPrice.toFixed(2)} USD`
+                                : ""}
+                            </div>
+
+                            <div className="small mt-2">
+                              <strong>Baggage:</strong>{" "}
+                              {getBaggage(offer.bags_price)}
+                            </div>
+
+                            <div className="small text-muted mt-1">
+                              Availability:{" "}
+                              {seats != null
+                                ? `${seats} seats`
+                                : "Not specified"}
+                            </div>
+
+                            <div className="small text-muted mt-1">
+                              Cabin:{" "}
+                              {firstSegment?.cabin_class || "Not specified"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {renderItinerary(outbound, "Outbound Flight")}
+
+                        {offer.inbound &&
+                          renderItinerary(offer.inbound, "Return Flight")}
+
+                        <div className="small text-muted mt-3">
+                          Offer ID: {offer.id || "Not available"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Raw API Response */}
 
             <details className="mt-3">
               <summary className="fw-semibold">
