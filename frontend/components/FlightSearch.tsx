@@ -36,7 +36,19 @@ export default function FlightSearch() {
 
   const [selectedOffers, setSelectedOffers] =
     useState<SelectedOffers>({});
+const [reviewStep, setReviewStep] = useState<
+  "closed" | "details" | "confirmation" | "completed"
+>("closed");
 
+const [passenger, setPassenger] = useState({
+  firstName: "",
+  lastName: "",
+});
+
+const [contact, setContact] = useState({
+  email: "",
+  phone: "",
+});
   const today = new Date().toLocaleDateString("en-CA");
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -273,7 +285,30 @@ export default function FlightSearch() {
   /*
    * Search
    */
+const continueToPassengerDetails = () => {
+  if (!allSegmentsSelected) {
+    setError("Please select one flight from every segment.");
+    return;
+  }
 
+  setError("");
+  setReviewStep("details");
+};
+
+const continueToConfirmation = () => {
+  if (
+    !passenger.firstName.trim() ||
+    !passenger.lastName.trim() ||
+    !contact.email.trim() ||
+    !contact.phone.trim()
+  ) {
+    setError("Please complete all passenger and contact details.");
+    return;
+  }
+
+  setError("");
+  setReviewStep("confirmation");
+};
   const searchFlight = async () => {
     setError("");
     setResults(null);
@@ -1052,19 +1087,23 @@ export default function FlightSearch() {
                       </h4>
                     </div>
 
-                    {!allSegmentsSelected && (
-                      <div className="alert alert-info mt-3 mb-0">
-                        Please select one flight from every segment
-                        to calculate the final AirFly price.
-                      </div>
-                    )}
-
                     {allSegmentsSelected && (
-                      <div className="alert alert-success mt-3 mb-0">
-                        All segments selected. Total itinerary price
-                        calculated successfully.
-                      </div>
-                    )}
+                   <>
+                <div className="alert alert-success mt-3 mb-3">
+                 All segments selected. Total itinerary price
+                 calculated successfully.
+              </div>
+
+             <button
+              type="button"
+              className="btn btn-success btn-lg w-100"
+              onClick={continueToPassengerDetails}
+              >
+             Review & Passenger Details →
+             </button>
+               </>
+              )}
+                    
                   </div>
                 </div>
 
