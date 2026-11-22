@@ -109,7 +109,7 @@ export default function FlightSearch() {
   const formatDuration = (seconds: any) => {
     const total = Number(seconds);
 
-    if (!Number.isFinite(total) || total <= 0) {
+    if (!Number.isFinite(total) || total < 0) {
       return "Not available";
     }
 
@@ -119,32 +119,98 @@ export default function FlightSearch() {
     return `${hours}h ${minutes}m`;
   };
 
-  const getBaggage = (baggage: any) => {
-    if (!baggage) return "Not specified";
-
-    if (typeof baggage === "string") return baggage;
-
-    if (Array.isArray(baggage)) {
-      return baggage
-        .map((item) =>
-          typeof item === "string"
-            ? item
-            : item?.quantity
-            ? `${item.quantity} ${item.unit || "bag"}`
-            : JSON.stringify(item)
-        )
-        .join(", ");
+  const getBaggage = (bagsPrice: any) => {
+    if (!bagsPrice || typeof bagsPrice !== "object") {
+      return "Not specified";
     }
 
-    if (typeof baggage === "object") {
-      return (
-        baggage.quantity
-          ? `${baggage.quantity} ${baggage.unit || "bag"}`
-          : baggage.description || JSON.stringify(baggage)
-      );
+    const oneBag = bagsPrice["1_bag"];
+
+    if (oneBag === undefined || oneBag === null) {
+      return "Not specified";
     }
 
-    return String(baggage);
+    return `1 bag: $${Number(oneBag).toFixed(2)} (estimated)`;
+  };
+
+  const renderItinerary = (
+    itinerary: any,
+    title: string
+  ) => {
+    const flightSegments = itinerary?.segments || [];
+
+    if (!flightSegments.length) return null;
+
+    return (
+      <div className="mt-3">
+        <h6 className="fw-bold mb-3">{title}</h6>
+
+        {flightSegments.map((segment: any, index: number) => (
+          <div
+            key={`${segment.flight_no || "segment"}-${index}`}
+            className="border rounded p-3 mb-2 bg-light"
+          >
+            <div className="d-flex flex-wrap justify-content-between gap-2 mb-2">
+              <strong>
+                {segment.airline_name || segment.airline || "Airline"}
+              </strong>
+
+              <span className="badge bg-secondary">
+                {segment.flight_no || "Flight number unavailable"}
+              </span>
+            </div>
+
+            <div className="row g-3">
+              <div className="col-md-4">
+                <div className="small text-muted">From</div>
+                <div className="fw-bold">
+                  {segment.origin || "N/A"}
+                </div>
+                <div className="small">
+                  {formatDate(segment.departure)}
+                </div>
+              </div>
+
+              <div className="col-md-4">
+                <div className="small text-muted">To</div>
+                <div className="fw-bold">
+                  {segment.destination || "N/A"}
+                </div>
+                <div className="small">
+                  {formatDate(segment.arrival)}
+                </div>
+              </div>
+
+              <div className="col-md-4">
+                <div className="small text-muted">Duration</div>
+                <div className="fw-semibold">
+                  {formatDuration(segment.duration_seconds)}
+                </div>
+                <div className="small text-muted">
+                  {segment.cabin_class || "Cabin not specified"}
+                  {segment.aircraft
+                    ? ` · ${segment.aircraft}`
+                    : ""}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div className="small text-muted mt-2">
+          Total duration:{" "}
+          <strong>
+            {formatDuration(itinerary.total_duration_seconds)}
+          </strong>
+          {" · "}
+          Stops:{" "}
+          <strong>
+            {itinerary.stopovers ??
+              Math.max(0, flightSegments.length - 1)}
+          </strong>
+        </div>
+      </div>
+    );
   };
 
   const searchFlight = async () => {
@@ -579,28 +645,30 @@ export default function FlightSearch() {
             )}
 
             {offers.map((offer: any, index: number) => {
+              const outbound = offer.outbound;
+              const firstSegment = outbound?.segments?.[0];
+
               const airline =
-                offer.airline ||
-                offer.airline_name ||
+                firstSegment?.airline_name ||
+                firstSegment?.airline ||
+                offer.owner_airline ||
                 "Airline";
 
-              const flightNumber =
-                offer.flight ||
-                offer.flight_number ||
-                offer.flight_no ||
-                "Not available";
-
-              const departure =
-                offer.departure ||
-                offer.departure_at ||
-                offer.departure_time;
-
-              const arrival =
-                offer.arrival ||
-                offer.arrival_at ||
-                offer.arrival_time;
+              const flightNumbers = (outbound?.segments || [])
+                .map((segment: any) => segment.flight_no)
+                .filter(Boolean)
+                .join(", ");
 
               const price = Number(offer.airfly_price_bdt);
+              const supplierPrice = Number(offer.price);
+
+              const refundable =
+                offer.conditions?.refundable || "Not specified";
+
+              const changeable =
+                offer.conditions?.changeable || "Not specified";
+
+              const seats = offer.availability_seats;
 
               return (
                 <div
@@ -615,37 +683,62 @@ export default function FlightSearch() {
                         </h5>
 
                         <div className="text-muted small">
-                          Flight: {flightNumber}
+                          Flight: {flightNumbers || "Not available"}
                         </div>
 
                         <div className="mt-2">
                           <span className="badge bg-light text-dark border">
-                            {offer.refundable || "Refund policy not specified"}
+                            {refundable}
                           </span>
+                        </div>
+
+                        <div className="small text-muted mt-2">
+                          Change: {changeable}
                         </div>
                       </div>
 
                       <div className="col-md-4">
                         <div className="fw-bold">
-                          {offer.origin || offer.from || form.from}
+                          {firstSegment?.origin ||
+                            results.search?.from ||
+                            form.from}
                           {" → "}
-                          {offer.destination || offer.to || form.to}
+                          {outbound?.segments?.[
+                            outbound.segments.length - 1
+                          ]?.destination ||
+                            results.search?.to ||
+                            form.to}
                         </div>
 
                         <div className="small text-muted mt-2">
                           <div>
                             <strong>Departure:</strong>{" "}
-                            {formatDate(departure)}
+                            {formatDate(firstSegment?.departure)}
                           </div>
 
                           <div>
                             <strong>Arrival:</strong>{" "}
-                            {formatDate(arrival)}
+                            {formatDate(
+                              outbound?.segments?.[
+                                outbound.segments.length - 1
+                              ]?.arrival
+                            )}
                           </div>
 
                           <div>
                             <strong>Duration:</strong>{" "}
-                            {formatDuration(offer.duration)}
+                            {formatDuration(
+                              outbound?.total_duration_seconds
+                            )}
+                          </div>
+
+                          <div>
+                            <strong>Stops:</strong>{" "}
+                            {outbound?.stopovers ??
+                              Math.max(
+                                0,
+                                (outbound?.segments?.length || 1) - 1
+                              )}
                           </div>
                         </div>
                       </div>
@@ -662,24 +755,37 @@ export default function FlightSearch() {
                         </h4>
 
                         <div className="small text-muted">
-                          {offer.price != null
-                            ? `Supplier Fare: ${offer.price} USD`
+                          {Number.isFinite(supplierPrice)
+                            ? `Supplier Fare: $${supplierPrice.toFixed(2)} USD`
                             : ""}
                         </div>
 
                         <div className="small mt-2">
                           <strong>Baggage:</strong>{" "}
-                          {getBaggage(
-                            offer.baggage ||
-                              offer.baggage_allowance
-                          )}
+                          {getBaggage(offer.bags_price)}
                         </div>
 
                         <div className="small text-muted mt-1">
                           Availability:{" "}
-                          {offer.availability ?? "Not specified"}
+                          {seats != null
+                            ? `${seats} seats`
+                            : "Not specified"}
+                        </div>
+
+                        <div className="small text-muted mt-1">
+                          Cabin:{" "}
+                          {firstSegment?.cabin_class || "Not specified"}
                         </div>
                       </div>
+                    </div>
+
+                    {renderItinerary(outbound, "Outbound Flight")}
+
+                    {offer.inbound &&
+                      renderItinerary(offer.inbound, "Return Flight")}
+
+                    <div className="small text-muted mt-3">
+                      Offer ID: {offer.id || "Not available"}
                     </div>
                   </div>
                 </div>
