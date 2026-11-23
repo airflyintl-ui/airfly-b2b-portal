@@ -30,6 +30,9 @@ export default function WalletPage() {
   const [error, setError] = useState("");
 
   const loadWallet = useCallback(async () => {
+    // Allow the effect to finish before updating state.
+    await Promise.resolve();
+
     setLoading(true);
     setError("");
 
@@ -56,7 +59,7 @@ export default function WalletPage() {
       let data: WalletResponse;
 
       try {
-        data = JSON.parse(responseText);
+        data = JSON.parse(responseText) as WalletResponse;
       } catch {
         throw new Error(
           `Invalid API response. HTTP Status: ${response.status}`
@@ -78,7 +81,7 @@ export default function WalletPage() {
       setStatement(
         Array.isArray(data.statement) ? data.statement : []
       );
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("WALLET API ERROR:", err);
 
       setError(
@@ -92,7 +95,7 @@ export default function WalletPage() {
   }, []);
 
   useEffect(() => {
-    loadWallet();
+    void loadWallet();
   }, [loadWallet]);
 
   const formatAmount = (amount: string | number) => {
@@ -133,7 +136,7 @@ export default function WalletPage() {
 
         <button
           className="btn btn-outline-primary"
-          onClick={loadWallet}
+          onClick={() => void loadWallet()}
           disabled={loading}
         >
           {loading ? "Loading..." : "↻ Refresh"}
@@ -155,7 +158,7 @@ export default function WalletPage() {
           <div className="mt-3">
             <button
               className="btn btn-sm btn-outline-danger"
-              onClick={loadWallet}
+              onClick={() => void loadWallet()}
             >
               Try Again
             </button>
@@ -165,7 +168,6 @@ export default function WalletPage() {
 
       {!loading && !error && (
         <>
-          {/* Wallet Summary */}
           <div className="row g-4 mb-4">
             <div className="col-md-6 col-lg-4">
               <div className="card border-0 shadow-sm h-100">
@@ -219,9 +221,7 @@ export default function WalletPage() {
                             : "text-danger"
                         }`}
                       >
-                        {lastTransaction.type === "Credit"
-                          ? "+"
-                          : "-"}{" "}
+                        {lastTransaction.type === "Credit" ? "+" : "-"}{" "}
                         ৳ {formatAmount(lastTransaction.amount)}
                       </h5>
 
@@ -251,7 +251,6 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {/* Agent Information */}
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-body py-3">
               <strong>Agent ID:</strong>{" "}
@@ -259,7 +258,6 @@ export default function WalletPage() {
             </div>
           </div>
 
-          {/* Transaction History */}
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white py-3">
               <h5 className="fw-bold mb-0">
@@ -323,13 +321,9 @@ export default function WalletPage() {
                             </span>
                           </td>
 
-                          <td>
-                            {transaction.reference || "-"}
-                          </td>
+                          <td>{transaction.reference || "-"}</td>
 
-                          <td>
-                            {transaction.remarks || "-"}
-                          </td>
+                          <td>{transaction.remarks || "-"}</td>
 
                           <td
                             className={`text-end fw-bold ${
@@ -338,9 +332,7 @@ export default function WalletPage() {
                                 : "text-danger"
                             }`}
                           >
-                            {transaction.type === "Credit"
-                              ? "+"
-                              : "-"}{" "}
+                            {transaction.type === "Credit" ? "+" : "-"}{" "}
                             ৳ {formatAmount(transaction.amount)}
                           </td>
 
