@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/services/api";
 
@@ -62,7 +62,7 @@ export default function BookingsPage() {
   // FETCH BOOKINGS
   // =========================================================
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -122,21 +122,25 @@ export default function BookingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   // =========================================================
   // INITIAL LOAD
   // =========================================================
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void fetchBookings();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchBookings]);
 
   // =========================================================
   // FETCH WALLET
   // =========================================================
 
-  const fetchWallet = async () => {
+  const fetchWallet = useCallback(async () => {
     const token = localStorage.getItem("token");
 
     if (!token) return;
@@ -164,11 +168,15 @@ export default function BookingsPage() {
     } catch (error) {
       console.error("Wallet error:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchWallet();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void fetchWallet();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchWallet]);
 
   // =========================================================
   // FORMAT DATE
@@ -1112,7 +1120,7 @@ export default function BookingsPage() {
               </h5>
 
               <p className="text-muted">
-                You haven't made any bookings yet.
+                You haven&apos;t made any bookings yet.
               </p>
 
               <button
