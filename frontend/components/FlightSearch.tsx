@@ -328,11 +328,16 @@ export default function FlightSearch() {
   const normalCalculatedPrice =
     normalSupplierUSD * exchangeRate + serviceCharge;
 
-  const normalAirFlyPrice = selectedNormalOffer
-    ? Number.isFinite(Number(selectedNormalOffer.airfly_price_bdt))
-      ? Number(selectedNormalOffer.airfly_price_bdt)
-      : normalCalculatedPrice
-    : 0;
+  const normalBackendPrice = selectedNormalOffer?.airfly_price_bdt;
+
+const normalAirFlyPrice = selectedNormalOffer
+  ? normalBackendPrice !== null &&
+    normalBackendPrice !== undefined &&
+    normalBackendPrice !== "" &&
+    Number.isFinite(Number(normalBackendPrice))
+    ? Number(normalBackendPrice)
+    : normalCalculatedPrice
+  : 0;
 
   const isMultiCity = results?.search?.trip_type === "multicity";
 
@@ -1797,7 +1802,15 @@ export default function FlightSearch() {
                     .filter(Boolean)
                     .join(", ");
 
-                  const price = Number(offer.airfly_price_bdt);
+                  const backendPrice = offer.airfly_price_bdt;
+
+                  const price =
+                    backendPrice !== null &&
+                    backendPrice !== undefined &&
+                    backendPrice !== "" &&
+                    Number.isFinite(Number(backendPrice))
+                      ? Number(backendPrice)
+                      : Number(offer.price || 0) * exchangeRate + serviceCharge;
                   const supplierPrice = Number(offer.price);
 
                   const refundable =
