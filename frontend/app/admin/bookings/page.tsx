@@ -131,8 +131,14 @@ export default function BookingsPage() {
   }, []);
 
   useEffect(() => {
-    fetchBookings();
-    fetchWallet();
+    const timer = window.setTimeout(() => {
+      void fetchBookings();
+      void fetchWallet();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [fetchBookings, fetchWallet]);
 
   const formatDate = (date?: string) => {
@@ -245,8 +251,8 @@ export default function BookingsPage() {
             type="button"
             className="btn btn-outline-primary"
             onClick={() => {
-              fetchBookings();
-              fetchWallet();
+              void fetchBookings();
+              void fetchWallet();
             }}
             disabled={loading}
           >
@@ -323,7 +329,7 @@ export default function BookingsPage() {
           <button
             type="button"
             className="btn btn-sm btn-danger"
-            onClick={fetchBookings}
+            onClick={() => void fetchBookings()}
           >
             Try Again
           </button>
@@ -387,7 +393,7 @@ export default function BookingsPage() {
               </h5>
 
               <p className="text-muted">
-                You haven't made any bookings yet.
+                You haven&apos;t made any bookings yet.
               </p>
 
               <button
