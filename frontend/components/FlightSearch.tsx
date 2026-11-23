@@ -31,6 +31,91 @@ type ContactDetails = {
 
 type SelectedOffers = Record<number, string>;
 
+type FlightDataSegment = {
+  airline_name?: string;
+  airline?: string;
+  flight_no?: string;
+  origin?: string;
+  destination?: string;
+  departure?: string | number | null;
+  arrival?: string | number | null;
+  duration_seconds?: number | string | null;
+  cabin_class?: string;
+  aircraft?: string;
+};
+
+type FlightItinerary = {
+  segments?: FlightDataSegment[];
+  total_duration_seconds?: number | string | null;
+  stopovers?: number | string | null;
+};
+
+type FlightOffer = {
+  id?: string | number;
+  offer_id?: string | number;
+  price?: number | string | null;
+  airfly_price_bdt?: number | string | null;
+  owner_airline?: string;
+  outbound?: FlightItinerary;
+  inbound?: FlightItinerary;
+  bags_price?: Record<
+    string,
+    number | string | null | undefined
+  > | null;
+  conditions?: {
+    refundable?: string;
+    changeable?: string;
+  };
+  availability_seats?: number | string | null;
+};
+
+type MultiCitySegmentResult = {
+  from: string;
+  to: string;
+  departure_date: string;
+  segment_number?: number;
+  offers?: FlightOffer[];
+};
+
+type FlightSearchResponse = {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string | string[]>;
+  data?: {
+    offers?: FlightOffer[];
+    segments?: MultiCitySegmentResult[];
+  };
+  pricing?: {
+    exchange_rate?: number | string;
+    service_charge?: number | string;
+    currency?: string;
+  };
+  search?: {
+    trip_type?: TripType;
+    from?: string;
+    to?: string;
+  };
+};
+
+type FlightSearchRequest =
+  | {
+      trip_type: "multicity";
+      segments: FlightSegment[];
+      adults: number;
+      children: number;
+      infants: number;
+    }
+  | {
+      trip_type: "oneway" | "roundtrip";
+      from: string;
+      to: string;
+      departure_date: string;
+      return_date: string | null;
+      adults: number;
+      children: number;
+      infants: number;
+    };
+
 const emptyPassenger = (type: PassengerType): Passenger => ({
   type,
   firstName: "",
@@ -62,13 +147,15 @@ export default function FlightSearch() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [results, setResults] = useState<any>(null);
+
+  const [results, setResults] =
+    useState<FlightSearchResponse | null>(null);
 
   const [selectedOffers, setSelectedOffers] =
     useState<SelectedOffers>({});
 
   const [selectedNormalOffer, setSelectedNormalOffer] =
-    useState<any>(null);
+    useState<FlightOffer | null>(null);
 
   const [reviewStep, setReviewStep] = useState<
     "closed" | "details" | "confirmation" | "completed"
@@ -83,13 +170,13 @@ export default function FlightSearch() {
     phone: "",
   });
 
-const now = new Date();
+  const now = new Date();
 
-const today = [
-  now.getFullYear(),
-  String(now.getMonth() + 1).padStart(2, "0"),
-  String(now.getDate()).padStart(2, "0"),
-].join("-");
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -163,7 +250,9 @@ const today = [
   const validateAirport = (code: string) =>
     /^[A-Z]{3}$/.test(code.trim());
 
-  const formatDate = (value: any) => {
+  const formatDate = (
+    value: string | number | null | undefined
+  ) => {
     if (!value) return "Not available";
 
     const date = new Date(value);
@@ -179,7 +268,9 @@ const today = [
     });
   };
 
-  const formatDuration = (seconds: any) => {
+  const formatDuration = (
+    seconds: number | string | null | undefined
+  ) => {
     const total = Number(seconds);
 
     if (!Number.isFinite(total) || total < 0) {
@@ -197,7 +288,12 @@ const today = [
       maximumFractionDigits: 2,
     })}`;
 
-  const getBaggage = (bagsPrice: any) => {
+  const getBaggage = (
+    bagsPrice:
+      | Record<string, number | string | null | undefined>
+      | null
+      | undefined
+  ) => {
     if (!bagsPrice || typeof bagsPrice !== "object") {
       return "Not specified";
     }
@@ -211,7 +307,10 @@ const today = [
     return `1 bag: $${Number(oneBag).toFixed(2)} (estimated)`;
   };
 
-  const renderItinerary = (itinerary: any, title: string) => {
+  const renderItinerary = (
+    itinerary: FlightItinerary | null | undefined,
+    title: string
+  ) => {
     const flightSegments = itinerary?.segments || [];
 
     if (!flightSegments.length) return null;
@@ -220,7 +319,7 @@ const today = [
       <div className="mt-3">
         <h6 className="fw-bold mb-3">{title}</h6>
 
-        {flightSegments.map((segment: any, index: number) => (
+        {flightSegments.map((segment, index) => (
           <div
             key={`${segment.flight_no || "segment"}-${index}`}
             className="border rounded p-3 mb-2 bg-light"
@@ -299,11 +398,11 @@ const today = [
   // Multi-City selected offers
 
   const selectedMultiOffers = multiSegments.map(
-    (segment: any, index: number) => {
+    (segment, index) => {
       const offerId = selectedOffers[index];
 
       return (segment.offers || []).find(
-        (offer: any) => String(offer.id) === offerId
+        (offer) => String(offer.id) === offerId
       );
     }
   );
@@ -315,7 +414,7 @@ const today = [
     selectedCount === multiSegments.length;
 
   const totalSupplierUSD = selectedMultiOffers.reduce(
-    (total: number, offer: any) =>
+    (total: number, offer: FlightOffer | undefined) =>
       total + (offer ? Number(offer.price || 0) : 0),
     0
   );
@@ -352,8 +451,10 @@ const today = [
     ? Number(totalAirFlyPrice || 0)
     : normalAirFlyPrice;
 
-  const selectedFlightSummary = isMultiCity
-    ? selectedMultiOffers.filter(Boolean)
+  const selectedFlightSummary: FlightOffer[] = isMultiCity
+    ? selectedMultiOffers.filter(
+        (offer): offer is FlightOffer => Boolean(offer)
+      )
     : selectedNormalOffer
     ? [selectedNormalOffer]
     : [];
@@ -397,18 +498,18 @@ const today = [
 
   const selectMultiOffer = (
     segmentIndex: number,
-    offerId: string | number
+    offerId: string | number | undefined
   ) => {
     setSelectedOffers((prev) => ({
       ...prev,
-      [segmentIndex]: String(offerId),
+      [segmentIndex]: String(offerId ?? ""),
     }));
 
     setReviewStep("closed");
     setError("");
   };
 
-  const selectNormalOffer = (offer: any) => {
+  const selectNormalOffer = (offer: FlightOffer) => {
     setSelectedNormalOffer(offer);
     setReviewStep("closed");
     setError("");
@@ -447,22 +548,24 @@ const today = [
 
     for (let i = 0; i < passengers.length; i++) {
       const passenger = passengers[i];
-      if (passenger.dateOfBirth > today) {
-  setError(
-    `Passenger ${i + 1}: Date of Birth cannot be in the future.`
-  );
-  return;
-}
 
-if (
-  passenger.passportExpiry &&
-  passenger.passportExpiry < today
-) {
-  setError(
-    `Passenger ${i + 1}: Passport has expired.`
-  );
-  return;
-}
+      if (passenger.dateOfBirth > today) {
+        setError(
+          `Passenger ${i + 1}: Date of Birth cannot be in the future.`
+        );
+        return;
+      }
+
+      if (
+        passenger.passportExpiry &&
+        passenger.passportExpiry < today
+      ) {
+        setError(
+          `Passenger ${i + 1}: Passport has expired.`
+        );
+        return;
+      }
+
       if (
         !passenger.firstName.trim() ||
         !passenger.lastName.trim() ||
@@ -526,7 +629,7 @@ if (
       return;
     }
 
-    let searchData: any;
+    let searchData: FlightSearchRequest;
 
     if (tripType === "multicity") {
       if (segments.length < 2 || segments.length > 6) {
@@ -673,13 +776,13 @@ if (
 
       const responseText = await response.text();
 
-let data: any;
+      let data: FlightSearchResponse;
 
-try {
-  data = JSON.parse(responseText);
-} catch {
-  throw new Error("Server returned an invalid response. Please try again.");
-}
+      try {
+        data = JSON.parse(responseText) as FlightSearchResponse;
+      } catch {
+        throw new Error("Server returned an invalid response. Please try again.");
+      }
 
       if (!response.ok || !data.success) {
         const validationErrors = data.errors
@@ -694,8 +797,12 @@ try {
       }
 
       setResults(data);
-    } catch (err: any) {
-      setError(err.message || "Cannot connect to Laravel API.");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Cannot connect to Laravel API."
+      );
     } finally {
       setLoading(false);
     }
@@ -952,7 +1059,7 @@ try {
 
                 <div className="card-body">
                   {selectedFlightSummary.map(
-                    (offer: any, index: number) => (
+                    (offer, index) => (
                       <div
                         key={offer.id || index}
                         className="border rounded p-3 mb-3"
@@ -1521,7 +1628,7 @@ try {
                   </small>
                 </div>
 
-                {multiSegments.map((segment: any, index: number) => {
+                {multiSegments.map((segment, index) => {
                   const segmentOffers = segment.offers || [];
                   const selectedId = selectedOffers[index];
 
@@ -1555,7 +1662,7 @@ try {
                         )}
 
                         {segmentOffers.map(
-                          (offer: any, offerIndex: number) => {
+                          (offer, offerIndex) => {
                             const outbound = offer.outbound;
                             const flightParts = outbound?.segments || [];
                             const firstSegment = flightParts[0];
@@ -1569,7 +1676,7 @@ try {
                               "Airline";
 
                             const flightNumbers = flightParts
-                              .map((item: any) => item.flight_no)
+                              .map((item) => item.flight_no)
                               .filter(Boolean)
                               .join(", ");
 
@@ -1808,7 +1915,7 @@ try {
                   </div>
                 )}
 
-                {offers.map((offer: any, index: number) => {
+                {offers.map((offer, index) => {
                   const outbound = offer.outbound;
                   const firstSegment = outbound?.segments?.[0];
 
@@ -1819,7 +1926,7 @@ try {
                     "Airline";
 
                   const flightNumbers = (outbound?.segments || [])
-                    .map((segment: any) => segment.flight_no)
+                    .map((segment) => segment.flight_no)
                     .filter(Boolean)
                     .join(", ");
 
