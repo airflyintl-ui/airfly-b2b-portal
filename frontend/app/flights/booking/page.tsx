@@ -1,15 +1,86 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+
+type Flight = {
+  airline: string;
+  flight_no: string;
+  from: string;
+  to: string;
+  departure_date?: string;
+  departure?: string;
+  arrival?: string;
+  price: number;
+  amount?: number;
+};
+
+type Passenger = {
+  first_name: string;
+  last_name: string;
+  passport: string;
+  nationality: string;
+  dob: string;
+  phone: string;
+  email: string;
+};
+
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getSelectedFlight(): string | null {
+  try {
+    return localStorage.getItem("selected_flight");
+  } catch {
+    return null;
+  }
+}
+
+function getServerSnapshot(): null {
+  return null;
+}
+
+function parseFlight(data: string | null): Flight | null {
+  if (!data) {
+    return null;
+  }
+
+  try {
+    const result: unknown = JSON.parse(data);
+
+    if (
+      typeof result === "object" &&
+      result !== null &&
+      "airline" in result &&
+      "from" in result &&
+      "to" in result
+    ) {
+      return result as Flight;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export default function BookingPage() {
   const router = useRouter();
 
-  const [flight, setFlight] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const storedFlight = useSyncExternalStore(
+    subscribeToStorage,
+    getSelectedFlight,
+    getServerSnapshot
+  );
 
-  const [passenger, setPassenger] = useState({
+  const flight = parseFlight(storedFlight);
+
+  const [passenger, setPassenger] = React.useState<Passenger>({
     first_name: "",
     last_name: "",
     passport: "",
@@ -19,22 +90,24 @@ export default function BookingPage() {
     email: "",
   });
 
-  useEffect(() => {
-    const data = localStorage.getItem("selected_flight");
+  const [loading, setLoading] = React.useState(false);
 
-    if (!data) {
+  useEffect(() => {
+    if (storedFlight === null) {
       router.push("/flights");
+    }
+  }, [storedFlight, router]);
+
+  const handleBooking = async () => {
+    if (!flight) {
+      alert("Flight information not found.");
       return;
     }
 
-    setFlight(JSON.parse(data));
-  }, [router]);
-
-  const handleBooking = async () => {
     if (
-      passenger.first_name === "" ||
-      passenger.last_name === "" ||
-      passenger.passport === ""
+      passenger.first_name.trim() === "" ||
+      passenger.last_name.trim() === "" ||
+      passenger.passport.trim() === ""
     ) {
       alert("Please fill all required fields.");
       return;
@@ -72,7 +145,6 @@ export default function BookingPage() {
               passenger.first_name + " " + passenger.last_name,
 
             passport: passenger.passport,
-
             amount: flight.price,
           }),
         }
@@ -97,9 +169,9 @@ export default function BookingPage() {
     } catch (error) {
       console.log(error);
       alert("Cannot connect to Laravel API");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   if (!flight) {
@@ -112,17 +184,13 @@ export default function BookingPage() {
 
   return (
     <div className="container py-5">
-
       <div className="card shadow-lg border-0">
-
         <div className="card-header bg-success text-white">
           <h3>Passenger Information</h3>
         </div>
 
         <div className="card-body">
-
           <div className="alert alert-info">
-
             <h5>{flight.airline}</h5>
 
             <strong>
@@ -131,26 +199,20 @@ export default function BookingPage() {
 
             <br />
 
-            Departure :
-            {" "}
-            {flight.departure}
+            Departure: {flight.departure}
 
             <br />
 
-            Arrival :
-            {" "}
-            {flight.arrival}
+            Arrival: {flight.arrival}
 
             <br />
 
             <h4 className="mt-2">
               Price : ৳ {flight.price}
             </h4>
-
           </div>
 
           <div className="row">
-
             <div className="col-md-6 mb-3">
               <label>First Name</label>
 
@@ -257,7 +319,6 @@ export default function BookingPage() {
                 }
               />
             </div>
-
           </div>
 
           <button
@@ -267,11 +328,8 @@ export default function BookingPage() {
           >
             {loading ? "Booking..." : "Confirm Booking"}
           </button>
-
         </div>
-
       </div>
-
     </div>
   );
 }
