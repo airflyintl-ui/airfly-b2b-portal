@@ -1,6 +1,11 @@
+
 import API from "./api";
 
-export async function searchFlights(data: any) {
+type FlightSearchData = {
+  [key: string]: unknown;
+};
+
+export async function searchFlights(data: FlightSearchData) {
   const res = await fetch(`${API}/search-flight`, {
     method: "POST",
     headers: {
