@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import API from "../../services/api";
 
 type Agent = {
@@ -40,7 +40,7 @@ export default function AgentsPage() {
   // LOAD AGENTS
   // =====================================================
 
-  const loadAgents = async () => {
+  const loadAgents = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -63,11 +63,17 @@ export default function AgentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadAgents();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadAgents();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loadAgents]);
 
   // =====================================================
   // SEARCH
@@ -104,8 +110,6 @@ export default function AgentsPage() {
     (currentPage - 1) * PER_PAGE,
     currentPage * PER_PAGE
   );
-
-  
 
   // =====================================================
   // FORM
@@ -459,10 +463,10 @@ export default function AgentsPage() {
                   className="form-control"
                   placeholder="Search by agency, owner, email, phone or ID..."
                   value={search}
-                 onChange={(e) => {
-                   setSearch(e.target.value);
-                   setCurrentPage(1);
-                 }}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
                 />
 
               </div>
