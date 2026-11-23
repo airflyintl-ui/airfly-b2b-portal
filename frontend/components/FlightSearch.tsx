@@ -1,5 +1,6 @@
 "use client";
 
+import API from "../services/api";
 import { useState, type ChangeEvent } from "react";
 
 type TripType = "oneway" | "roundtrip" | "multicity";
@@ -296,7 +297,7 @@ export default function FlightSearch() {
       const offerId = selectedOffers[index];
 
       return (segment.offers || []).find(
-        (offer: any) => offer.id === offerId
+        (offer: any) => String(offer.id) === offerId
       );
     }
   );
@@ -330,14 +331,14 @@ export default function FlightSearch() {
 
   const normalBackendPrice = selectedNormalOffer?.airfly_price_bdt;
 
-const normalAirFlyPrice = selectedNormalOffer
-  ? normalBackendPrice !== null &&
-    normalBackendPrice !== undefined &&
-    normalBackendPrice !== "" &&
-    Number.isFinite(Number(normalBackendPrice))
-    ? Number(normalBackendPrice)
-    : normalCalculatedPrice
-  : 0;
+  const normalAirFlyPrice = selectedNormalOffer
+    ? normalBackendPrice !== null &&
+      normalBackendPrice !== undefined &&
+      normalBackendPrice !== "" &&
+      Number.isFinite(Number(normalBackendPrice))
+      ? Number(normalBackendPrice)
+      : normalCalculatedPrice
+    : 0;
 
   const isMultiCity = results?.search?.trip_type === "multicity";
 
@@ -390,14 +391,15 @@ const normalAirFlyPrice = selectedNormalOffer
 
   const selectMultiOffer = (
     segmentIndex: number,
-    offerId: string
+    offerId: string | number
   ) => {
     setSelectedOffers((prev) => ({
       ...prev,
-      [segmentIndex]: offerId,
+      [segmentIndex]: String(offerId),
     }));
 
     setReviewStep("closed");
+    setError("");
   };
 
   const selectNormalOffer = (offer: any) => {
@@ -466,7 +468,7 @@ const normalAirFlyPrice = selectedNormalOffer
       return;
     }
 
-    if (finalPrice <= 0) {
+    if (finalPrice <= 0 || !Number.isFinite(finalPrice)) {
       setError("Flight price is unavailable. Please select a flight again.");
       return;
     }
@@ -625,16 +627,7 @@ const normalAirFlyPrice = selectedNormalOffer
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(
-        /\/+$/,
-        ""
-      );
-
-      if (!apiUrl) {
-        throw new Error("NEXT_PUBLIC_API_URL is not configured.");
-      }
-
-      // Agent authentication token
+      const apiUrl = API.replace(/\/+$/, "");
 
       const token = localStorage.getItem("token");
 
@@ -644,10 +637,8 @@ const normalAirFlyPrice = selectedNormalOffer
         );
       }
 
-      // LetsFG Sandbox API
-
       const response = await fetch(
-        `${apiUrl}/api/sandbox/search-flight`,
+        `${apiUrl}/sandbox/search-flight`,
         {
           method: "POST",
           headers: {
@@ -1553,11 +1544,12 @@ const normalAirFlyPrice = selectedNormalOffer
                               .filter(Boolean)
                               .join(", ");
 
-                            const supplierPrice = Number(offer.price);
+                            const supplierPrice = Number(offer.price || 0);
                             const estimatedBDT =
                               supplierPrice * exchangeRate;
 
-                            const isSelected = selectedId === offer.id;
+                            const isSelected =
+                              selectedId === String(offer.id);
 
                             return (
                               <div
@@ -1811,7 +1803,8 @@ const normalAirFlyPrice = selectedNormalOffer
                     Number.isFinite(Number(backendPrice))
                       ? Number(backendPrice)
                       : Number(offer.price || 0) * exchangeRate + serviceCharge;
-                  const supplierPrice = Number(offer.price);
+
+                  const supplierPrice = Number(offer.price || 0);
 
                   const refundable =
                     offer.conditions?.refundable || "Not specified";
