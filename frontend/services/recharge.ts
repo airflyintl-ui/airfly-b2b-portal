@@ -1,6 +1,10 @@
 import API from "./api";
 
-export async function rechargeWallet(data: any) {
+type RechargeData = {
+  [key: string]: unknown;
+};
+
+export async function rechargeWallet(data: RechargeData) {
   const res = await fetch(`${API}/recharges`, {
     method: "POST",
     headers: {
