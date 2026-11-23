@@ -236,7 +236,7 @@ if (response.ok && data.success && data.token) {
           <div className="text-center mt-3">
 
             <span className="text-muted">
-              Don't have an agency account?
+             Don&apos;t have an agency account?
             </span>
 
             <br />
