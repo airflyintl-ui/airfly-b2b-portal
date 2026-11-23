@@ -66,7 +66,7 @@ export default function Login() {
 
      
 // Login successful
-if (response.ok && data.success) {
+if (response.ok && data.success && data.token) {
 
   // Clear previous Admin session
   localStorage.removeItem("admin_token");
