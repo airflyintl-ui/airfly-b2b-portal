@@ -1,17 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useSyncExternalStore } from "react";
+
+type Agent = {
+  owner_name?: string;
+  email?: string;
+};
+
+function subscribeToAgent(callback: () => void) {
+  window.addEventListener("storage", callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getAgentSnapshot() {
+  return localStorage.getItem("agent");
+}
+
+function getServerAgentSnapshot() {
+  return null;
+}
 
 export default function DashboardHeader() {
-  const [agent, setAgent] = useState<any>(null);
+  const agentData = useSyncExternalStore(
+    subscribeToAgent,
+    getAgentSnapshot,
+    getServerAgentSnapshot
+  );
 
-  useEffect(() => {
-    const data = localStorage.getItem("agent");
+  let agent: Agent | null = null;
 
-    if (data) {
-      setAgent(JSON.parse(data));
-    }
-  }, []);
+  try {
+    agent = agentData ? (JSON.parse(agentData) as Agent) : null;
+  } catch {
+    agent = null;
+  }
 
   return (
     <div className="bg-white shadow-sm rounded p-3 mb-4 d-flex justify-content-between align-items-center">
@@ -23,19 +49,21 @@ export default function DashboardHeader() {
       </div>
 
       <div className="d-flex align-items-center gap-3">
-        <button className="btn btn-light">🔔</button>
+        <button className="btn btn-light" type="button">
+          🔔
+        </button>
 
         <div className="text-end">
           <strong>{agent?.owner_name || "Agent"}</strong>
           <br />
-          <small className="text-muted">
-            {agent?.email || ""}
-          </small>
+          <small className="text-muted">{agent?.email || ""}</small>
         </div>
 
-        <img
+        <Image
           src="/images/logo.jpg"
           alt="Profile"
+          width={50}
+          height={50}
           className="rounded-circle border"
           style={{
             width: "50px",
