@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-
+import React, { useEffect, useSyncExternalStore } from "react";
 type Flight = {
   airline: string;
   flight_no: string;
