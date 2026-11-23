@@ -42,7 +42,7 @@ export default function AdminWallets() {
 
   const [saving, setSaving] = useState(false);
 
-  const [historyAgent, setHistoryAgent] = useState<any>(null);
+  const [historyAgent, setHistoryAgent] = useState<Agent | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -103,8 +103,15 @@ export default function AdminWallets() {
     }
   }, [router]);
 
+  // Defer the initial request so state updates happen after the effect body.
   useEffect(() => {
-    loadAgents();
+    const timer = window.setTimeout(() => {
+      void loadAgents(1);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [loadAgents]);
 
   const openAdjustment = (
@@ -244,7 +251,7 @@ export default function AdminWallets() {
         return;
       }
 
-      setHistoryAgent(data.agent);
+      setHistoryAgent(data.agent as Agent);
       setTransactions(data.transactions?.data || []);
     } catch (err) {
       console.error(err);
@@ -335,9 +342,7 @@ export default function AdminWallets() {
                   {agents.map((agent) => (
                     <tr key={agent.id}>
                       <td>{agent.id}</td>
-                      <td className="fw-semibold">
-                        {agent.agency_name}
-                      </td>
+                      <td className="fw-semibold">{agent.agency_name}</td>
                       <td>{agent.owner_name}</td>
                       <td>{agent.email}</td>
                       <td>
@@ -358,18 +363,14 @@ export default function AdminWallets() {
                         <div className="d-flex flex-wrap gap-2">
                           <button
                             className="btn btn-sm btn-success"
-                            onClick={() =>
-                              openAdjustment(agent, "Credit")
-                            }
+                            onClick={() => openAdjustment(agent, "Credit")}
                           >
                             + Add Money
                           </button>
 
                           <button
                             className="btn btn-sm btn-danger"
-                            onClick={() =>
-                              openAdjustment(agent, "Debit")
-                            }
+                            onClick={() => openAdjustment(agent, "Debit")}
                           >
                             − Deduct
                           </button>
@@ -514,9 +515,7 @@ export default function AdminWallets() {
 
                 <button
                   className={`btn ${
-                    modalType === "Credit"
-                      ? "btn-success"
-                      : "btn-danger"
+                    modalType === "Credit" ? "btn-success" : "btn-danger"
                   }`}
                   disabled={
                     saving ||
@@ -617,9 +616,7 @@ export default function AdminWallets() {
                             >
                               ৳{formatMoney(transaction.amount)}
                             </td>
-                            <td>
-                              ৳{formatMoney(transaction.balance_after)}
-                            </td>
+                            <td>৳{formatMoney(transaction.balance_after)}</td>
                             <td>{transaction.reference || "-"}</td>
                             <td>{transaction.remarks || "-"}</td>
                           </tr>
