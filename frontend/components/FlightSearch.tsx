@@ -83,7 +83,13 @@ export default function FlightSearch() {
     phone: "",
   });
 
-  const today = new Date().toLocaleDateString("en-CA");
+const now = new Date();
+
+const today = [
+  now.getFullYear(),
+  String(now.getMonth() + 1).padStart(2, "0"),
+  String(now.getDate()).padStart(2, "0"),
+].join("-");
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -441,7 +447,22 @@ export default function FlightSearch() {
 
     for (let i = 0; i < passengers.length; i++) {
       const passenger = passengers[i];
+      if (passenger.dateOfBirth > today) {
+  setError(
+    `Passenger ${i + 1}: Date of Birth cannot be in the future.`
+  );
+  return;
+}
 
+if (
+  passenger.passportExpiry &&
+  passenger.passportExpiry < today
+) {
+  setError(
+    `Passenger ${i + 1}: Passport has expired.`
+  );
+  return;
+}
       if (
         !passenger.firstName.trim() ||
         !passenger.lastName.trim() ||
@@ -650,7 +671,15 @@ export default function FlightSearch() {
         }
       );
 
-      const data = await response.json();
+      const responseText = await response.text();
+
+let data: any;
+
+try {
+  data = JSON.parse(responseText);
+} catch {
+  throw new Error("Server returned an invalid response. Please try again.");
+}
 
       if (!response.ok || !data.success) {
         const validationErrors = data.errors
