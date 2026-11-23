@@ -4,11 +4,53 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "../../services/api";
 
+type Agent = {
+  id?: number;
+  agency_name?: string;
+  owner_name?: string;
+  email?: string;
+  mobile?: string;
+  phone?: string;
+  status?: string;
+};
+
+type DashboardBooking = {
+  id: number | string;
+  pnr?: string | null;
+  booking_status?: string | null;
+  payment_status?: string | null;
+  total_amount?: number | string | null;
+};
+
+type DashboardRecharge = {
+  id: number | string;
+  amount?: number | string | null;
+  status?: string | null;
+  created_at?: string | null;
+};
+
+type DashboardCards = {
+  wallet_balance?: number | string | null;
+  total_bookings?: number | string | null;
+  pending_recharges?: number | string | null;
+  approved_recharges?: number | string | null;
+};
+
+type DashboardResponse = {
+  success?: boolean;
+  message?: string;
+  agent?: Agent;
+  cards?: DashboardCards;
+  latest_bookings?: DashboardBooking[];
+  latest_recharges?: DashboardRecharge[];
+};
+
 export default function Dashboard() {
   const router = useRouter();
 
-  const [agent, setAgent] = useState<any>(null);
-  const [dashboard, setDashboard] = useState<any>(null);
+  const [agent, setAgent] = useState<Agent | null>(null);
+  const [dashboard, setDashboard] =
+    useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -46,6 +88,7 @@ export default function Dashboard() {
 
     if (!token) {
       router.replace("/login");
+      setLoading(false);
       return;
     }
 
@@ -59,7 +102,8 @@ export default function Dashboard() {
           },
         });
 
-        const data = await response.json();
+        const data =
+          (await response.json()) as DashboardResponse;
 
         console.log("Dashboard API:", data);
 
@@ -78,9 +122,9 @@ export default function Dashboard() {
 
         const savedAgent = JSON.parse(
           localStorage.getItem("agent") || "null"
-        );
+        ) as Agent | null;
 
-        const agentData = {
+        const agentData: Agent = {
           ...savedAgent,
           ...data.agent,
           mobile:
@@ -93,20 +137,18 @@ export default function Dashboard() {
 
         setAgent(agentData);
         setDashboard(data);
-
       } catch (error) {
         console.error("Dashboard Error:", error);
 
         alert(
           "Cannot connect to Laravel API.\n\nPlease check the backend."
         );
-
       } finally {
         setLoading(false);
       }
     };
 
-    loadDashboard();
+    void loadDashboard();
   }, [router]);
 
   if (loading) {
@@ -131,7 +173,6 @@ export default function Dashboard() {
       {/* HEADER */}
 
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-
         <div>
           <h2 className="fw-bold">
             Welcome, {agent.owner_name}
@@ -149,7 +190,6 @@ export default function Dashboard() {
         >
           {loggingOut ? "Logging out..." : "Logout"}
         </button>
-
       </div>
 
       {/* DASHBOARD CARDS */}
@@ -161,7 +201,6 @@ export default function Dashboard() {
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-
               <h6 className="text-muted">
                 Wallet Balance
               </h6>
@@ -169,7 +208,6 @@ export default function Dashboard() {
               <h3 className="fw-bold text-success">
                 ৳ {cards.wallet_balance ?? "0.00"}
               </h3>
-
             </div>
           </div>
         </div>
@@ -179,7 +217,6 @@ export default function Dashboard() {
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-
               <h6 className="text-muted">
                 My Bookings
               </h6>
@@ -187,7 +224,6 @@ export default function Dashboard() {
               <h3 className="fw-bold">
                 {cards.total_bookings ?? 0}
               </h3>
-
             </div>
           </div>
         </div>
@@ -197,7 +233,6 @@ export default function Dashboard() {
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-
               <h6 className="text-muted">
                 Pending Recharge
               </h6>
@@ -205,7 +240,6 @@ export default function Dashboard() {
               <h3 className="fw-bold text-warning">
                 {cards.pending_recharges ?? 0}
               </h3>
-
             </div>
           </div>
         </div>
@@ -215,7 +249,6 @@ export default function Dashboard() {
         <div className="col-md-3 mb-3">
           <div className="card shadow-sm border-0 h-100">
             <div className="card-body">
-
               <h6 className="text-muted">
                 Approved Recharge
               </h6>
@@ -223,7 +256,6 @@ export default function Dashboard() {
               <h3 className="fw-bold text-primary">
                 {cards.approved_recharges ?? 0}
               </h3>
-
             </div>
           </div>
         </div>
@@ -233,15 +265,12 @@ export default function Dashboard() {
       {/* AGENCY INFORMATION */}
 
       <div className="card shadow-sm border-0 mt-4">
-
         <div className="card-body">
-
           <h5 className="fw-bold mb-3">
             Agency Information
           </h5>
 
           <div className="row">
-
             <div className="col-md-6 mb-2">
               <strong>Agency:</strong>{" "}
               {agent.agency_name || "-"}
@@ -259,30 +288,22 @@ export default function Dashboard() {
 
             <div className="col-md-6 mb-2">
               <strong>Phone:</strong>{" "}
-              {agent.mobile ||
-                agent.phone ||
-                "-"}
+              {agent.mobile || agent.phone || "-"}
             </div>
 
             <div className="col-md-6 mb-2">
               <strong>Status:</strong>{" "}
-
               <span className="badge bg-success">
                 {agent.status || "-"}
               </span>
-
             </div>
-
           </div>
-
         </div>
-
       </div>
 
       {/* ACTION BUTTONS */}
 
       <div className="mt-4 d-flex gap-3 flex-wrap">
-
         <button
           className="btn btn-primary"
           onClick={() => router.push("/search-flight")}
@@ -310,31 +331,23 @@ export default function Dashboard() {
         >
           Recharge
         </button>
-
       </div>
 
       {/* LATEST BOOKINGS */}
 
       <div className="card shadow-sm border-0 mt-5">
-
         <div className="card-body">
-
           <h5 className="fw-bold mb-3">
             Latest Bookings
           </h5>
 
           {latestBookings.length === 0 ? (
-
             <p className="text-muted mb-0">
               No bookings found.
             </p>
-
           ) : (
-
             <div className="table-responsive">
-
               <table className="table table-bordered">
-
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -346,71 +359,49 @@ export default function Dashboard() {
                 </thead>
 
                 <tbody>
+                  {latestBookings.map((booking) => (
+                    <tr key={booking.id}>
+                      <td>{booking.id}</td>
 
-                  {latestBookings.map(
-                    (booking: any) => (
+                      <td>
+                        {booking.pnr || "-"}
+                      </td>
 
-                      <tr key={booking.id}>
+                      <td>
+                        {booking.booking_status || "-"}
+                      </td>
 
-                        <td>
-                          {booking.id}
-                        </td>
+                      <td>
+                        {booking.payment_status || "-"}
+                      </td>
 
-                        <td>
-                          {booking.pnr || "-"}
-                        </td>
-
-                        <td>
-                          {booking.booking_status || "-"}
-                        </td>
-
-                        <td>
-                          {booking.payment_status || "-"}
-                        </td>
-
-                        <td>
-                          ৳ {booking.total_amount ?? "0.00"}
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
+                      <td>
+                        ৳ {booking.total_amount ?? "0.00"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
-
               </table>
-
             </div>
-
           )}
-
         </div>
-
       </div>
 
       {/* LATEST RECHARGES */}
 
       <div className="card shadow-sm border-0 mt-4">
-
         <div className="card-body">
-
           <h5 className="fw-bold mb-3">
             Latest Recharges
           </h5>
 
           {latestRecharges.length === 0 ? (
-
             <p className="text-muted mb-0">
               No recharge found.
             </p>
-
           ) : (
-
             <div className="table-responsive">
-
               <table className="table table-bordered">
-
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -421,47 +412,32 @@ export default function Dashboard() {
                 </thead>
 
                 <tbody>
+                  {latestRecharges.map((recharge) => (
+                    <tr key={recharge.id}>
+                      <td>{recharge.id}</td>
 
-                  {latestRecharges.map(
-                    (recharge: any) => (
+                      <td>
+                        ৳ {recharge.amount ?? "0.00"}
+                      </td>
 
-                      <tr key={recharge.id}>
+                      <td>
+                        {recharge.status || "-"}
+                      </td>
 
-                        <td>
-                          {recharge.id}
-                        </td>
-
-                        <td>
-                          ৳ {recharge.amount ?? "0.00"}
-                        </td>
-
-                        <td>
-                          {recharge.status || "-"}
-                        </td>
-
-                        <td>
-                          {recharge.created_at
-                            ? new Date(
-                                recharge.created_at
-                              ).toLocaleDateString()
-                            : "-"}
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
+                      <td>
+                        {recharge.created_at
+                          ? new Date(
+                              recharge.created_at
+                            ).toLocaleDateString()
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
-
               </table>
-
             </div>
-
           )}
-
         </div>
-
       </div>
 
     </div>
