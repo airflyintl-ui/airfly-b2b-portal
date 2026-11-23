@@ -4,10 +4,37 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/services/api";
 
+type Flight = {
+  id?: number | string;
+  airline?: string;
+  flight_no?: string;
+  flightNo?: string;
+  from?: string;
+  to?: string;
+  departure_time?: string;
+  arrival_time?: string;
+  business_fare?: number | string;
+  businessFare?: number | string;
+  economy_fare?: number | string;
+  economyFare?: number | string;
+  fare?: number | string;
+};
+
+type BookingResponse = {
+  success: boolean;
+  message?: string;
+  booking?: {
+    id?: number | string;
+    pnr?: string;
+  };
+  errors?: Record<string, string | string[]>;
+  [key: string]: unknown;
+};
+
 export default function BookingPage() {
   const router = useRouter();
 
-  const [flight, setFlight] = useState<any>(null);
+  const [flight, setFlight] = useState<Flight | null>(null);
 
   const [passengerName, setPassengerName] = useState("");
   const [passport, setPassport] = useState("");
@@ -28,22 +55,32 @@ export default function BookingPage() {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [error, setError] = useState("");
 
+  // LOAD SELECTED FLIGHT
   useEffect(() => {
-    const data = localStorage.getItem("selected_flight");
+    const timer = window.setTimeout(() => {
+      const data = localStorage.getItem("selected_flight");
 
-    if (!data) {
-      router.push("/flight-search");
-      return;
-    }
+      if (!data) {
+        router.push("/flight-search");
+        return;
+      }
 
-    try {
-      const parsedFlight = JSON.parse(data);
-      setFlight(parsedFlight);
-    } catch (error) {
-      console.error("Invalid selected flight:", error);
-      localStorage.removeItem("selected_flight");
-      router.push("/flight-search");
-    }
+      try {
+        const parsedFlight: Flight = JSON.parse(data);
+
+        if (!parsedFlight || typeof parsedFlight !== "object") {
+          throw new Error("Invalid flight information");
+        }
+
+        setFlight(parsedFlight);
+      } catch (error) {
+        console.error("Invalid selected flight:", error);
+        localStorage.removeItem("selected_flight");
+        router.push("/flight-search");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [router]);
 
   // GET WALLET BALANCE
@@ -63,7 +100,8 @@ export default function BookingPage() {
           cache: "no-store",
         });
 
-        const data = await response.json();
+        const data: { success?: boolean; wallet?: number | string } =
+          await response.json();
 
         if (response.ok && data.success) {
           setWalletBalance(Number(data.wallet));
@@ -73,7 +111,7 @@ export default function BookingPage() {
       }
     };
 
-    loadWallet();
+    void loadWallet();
   }, []);
 
   // CALCULATE TOTAL
@@ -103,6 +141,8 @@ export default function BookingPage() {
 
   // CONFIRM BOOKING
   const confirmBooking = async () => {
+    if (loading) return;
+
     setError("");
 
     const token = localStorage.getItem("token");
@@ -162,9 +202,9 @@ export default function BookingPage() {
         flight_id: Number(flight.id),
         passenger_name: passengerName.trim(),
         passport: passport.trim(),
-        nationality: nationality,
+        nationality,
         date_of_birth: dateOfBirth,
-        gender: gender,
+        gender,
         phone: phone.trim(),
         email: email.trim(),
         journey_type: journeyType,
@@ -186,7 +226,7 @@ export default function BookingPage() {
         body: JSON.stringify(bookingData),
       });
 
-      const data = await response.json();
+      const data: BookingResponse = await response.json();
 
       console.log("BOOKING RESPONSE:", data);
 
@@ -256,12 +296,12 @@ export default function BookingPage() {
 
               <p className="mb-2">
                 <strong>Flight:</strong>{" "}
-                {flight.flight_no || flight.flightNo}
+                {flight.flight_no || flight.flightNo || "-"}
               </p>
 
               <p className="mb-2">
                 <strong>Route:</strong>{" "}
-                {flight.from} → {flight.to}
+                {flight.from || "-"} → {flight.to || "-"}
               </p>
 
               {flight.departure_time && (
