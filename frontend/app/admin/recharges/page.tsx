@@ -108,8 +108,15 @@ export default function AdminRechargesPage() {
     }
   }, [router]);
 
+  // Defer the initial request to avoid synchronous state updates in an effect.
   useEffect(() => {
-    loadRecharges();
+    const timer = window.setTimeout(() => {
+      void loadRecharges();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [loadRecharges]);
 
   // FILTER
