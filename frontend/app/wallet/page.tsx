@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import API from "@/services/api";
 
 type WalletTransaction = {
@@ -20,6 +20,7 @@ type WalletResponse = {
   agent_id: number;
   wallet: string | number;
   statement: WalletTransaction[];
+  message?: string;
 };
 
 export default function WalletPage() {
@@ -29,7 +30,7 @@ export default function WalletPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadWallet = async () => {
+  const loadWallet = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -53,10 +54,10 @@ export default function WalletPage() {
 
       const responseText = await response.text();
 
-      let data: WalletResponse & { message?: string };
+      let data: WalletResponse;
 
       try {
-        data = JSON.parse(responseText);
+        data = JSON.parse(responseText) as WalletResponse;
       } catch {
         throw new Error(
           `Invalid API response. HTTP Status: ${response.status}`
@@ -75,8 +76,10 @@ export default function WalletPage() {
 
       setWallet(String(data.wallet ?? 0));
       setAgentId(data.agent_id ?? null);
-      setStatement(data.statement || []);
-    } catch (err) {
+      setStatement(
+        Array.isArray(data.statement) ? data.statement : []
+      );
+    } catch (err: unknown) {
       console.error("WALLET API ERROR:", err);
 
       setError(
@@ -87,21 +90,33 @@ export default function WalletPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadWallet();
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadWallet();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loadWallet]);
+
   const formatAmount = (amount: string | number) => {
-    return Number(amount).toLocaleString("en-BD", {
+    return Number(amount || 0).toLocaleString("en-BD", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleString("en-BD", {
+    const parsedDate = new Date(date);
+
+    if (isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleString("en-BD", {
       year: "numeric",
       month: "short",
       day: "2-digit",
@@ -122,7 +137,7 @@ export default function WalletPage() {
 
         <button
           className="btn btn-outline-primary"
-          onClick={loadWallet}
+          onClick={() => void loadWallet()}
           disabled={loading}
         >
           {loading ? "Loading..." : "↻ Refresh"}
@@ -140,8 +155,12 @@ export default function WalletPage() {
           <strong>Wallet Error:</strong>
           <br />
           {error}
+
           <div className="mt-3">
-            <button className="btn btn-sm btn-outline-danger" onClick={loadWallet}>
+            <button
+              className="btn btn-sm btn-outline-danger"
+              onClick={() => void loadWallet()}
+            >
               Try Again
             </button>
           </div>
@@ -157,9 +176,11 @@ export default function WalletPage() {
                   <div className="text-muted mb-2">
                     Current Wallet Balance
                   </div>
+
                   <h1 className="fw-bold mb-0">
                     ৳ {formatAmount(wallet)}
                   </h1>
+
                   <div className="text-success mt-2">
                     ● Available Balance
                   </div>
@@ -170,10 +191,14 @@ export default function WalletPage() {
             <div className="col-md-6 col-lg-4">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body p-4">
-                  <div className="text-muted mb-2">Agent ID</div>
+                  <div className="text-muted mb-2">
+                    Agent ID
+                  </div>
+
                   <h3 className="fw-bold mb-0">
                     {agentId !== null ? `#${agentId}` : "-"}
                   </h3>
+
                   <div className="text-muted mt-2">
                     Air Fly International
                   </div>
@@ -184,10 +209,14 @@ export default function WalletPage() {
             <div className="col-md-6 col-lg-4">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body p-4">
-                  <div className="text-muted mb-2">Transactions</div>
+                  <div className="text-muted mb-2">
+                    Transactions
+                  </div>
+
                   <h3 className="fw-bold mb-0">
                     {statement.length}
                   </h3>
+
                   <div className="text-muted mt-2">
                     Total wallet transactions
                   </div>
@@ -206,10 +235,19 @@ export default function WalletPage() {
             <div className="card-body p-0">
               {statement.length === 0 ? (
                 <div className="text-center py-5">
-                  <div style={{ fontSize: "48px", marginBottom: "15px" }}>
+                  <div
+                    style={{
+                      fontSize: "48px",
+                      marginBottom: "15px",
+                    }}
+                  >
                     💳
                   </div>
-                  <h5 className="fw-bold">No Transactions Yet</h5>
+
+                  <h5 className="fw-bold">
+                    No Transactions Yet
+                  </h5>
+
                   <p className="text-muted mb-0">
                     Your wallet transactions will appear here.
                   </p>
@@ -232,7 +270,11 @@ export default function WalletPage() {
                       {statement.map((transaction) => (
                         <tr key={transaction.id}>
                           <td>#{transaction.id}</td>
-                          <td>{formatDate(transaction.created_at)}</td>
+
+                          <td className="text-nowrap">
+                            {formatDate(transaction.created_at)}
+                          </td>
+
                           <td>
                             <span className="badge bg-primary">
                               {transaction.transaction_type ||
@@ -240,12 +282,17 @@ export default function WalletPage() {
                                 "Transaction"}
                             </span>
                           </td>
+
                           <td>
                             {transaction.description ||
                               transaction.remarks ||
                               "-"}
                           </td>
-                          <td>{transaction.reference || "-"}</td>
+
+                          <td>
+                            {transaction.reference || "-"}
+                          </td>
+
                           <td className="text-end fw-bold">
                             ৳ {formatAmount(transaction.amount)}
                           </td>
