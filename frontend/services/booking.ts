@@ -1,6 +1,10 @@
 import API from "./api";
 
-export async function createBooking(data: any) {
+type BookingData = {
+  [key: string]: unknown;
+};
+
+export async function createBooking(data: BookingData) {
   const res = await fetch(`${API}/bookings`, {
     method: "POST",
     headers: {
