@@ -28,10 +28,84 @@ type ReviewStep =
   | "confirmation"
   | "completed";
 
+type SearchForm = {
+  from: string;
+  to: string;
+  departure_date: string;
+  return_date: string;
+  adults: number | string;
+  children: number | string;
+  infants: number | string;
+};
+
+type FlightSegmentData = {
+  flight_no?: string | null;
+  airline_name?: string | null;
+  airline?: string | null;
+  origin?: string | null;
+  destination?: string | null;
+  departure?: string | null;
+  arrival?: string | null;
+  duration_seconds?: number | string | null;
+  cabin_class?: string | null;
+  aircraft?: string | null;
+};
+
+type FlightItinerary = {
+  segments?: FlightSegmentData[];
+  total_duration_seconds?: number | string | null;
+  stopovers?: number | null;
+};
+
+type FlightOffer = {
+  id: string;
+  offer_id?: string;
+  price?: number | string | null;
+  airfly_price_bdt?: number | string | null;
+  owner_airline?: string | null;
+  outbound?: FlightItinerary;
+  inbound?: FlightItinerary;
+  bags_price?: Record<string, number | string | null> | null;
+  conditions?: {
+    refundable?: string;
+    changeable?: string;
+  };
+  availability_seats?: number | string | null;
+};
+
+type MultiCitySegment = {
+  segment_number?: number;
+  from: string;
+  to: string;
+  departure_date: string;
+  offers?: FlightOffer[];
+};
+
+type FlightSearchResponse = {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[]>;
+  search?: {
+    trip_type?: TripType;
+    from?: string;
+    to?: string;
+  };
+  data?: {
+    offers?: FlightOffer[];
+    segments?: MultiCitySegment[];
+  };
+  pricing?: {
+    exchange_rate?: number | string;
+    service_charge?: number | string;
+  };
+};
+
+type FlightSearchRequest = Record<string, unknown>;
+
 export default function FlightSearch() {
   const [tripType, setTripType] = useState<TripType>("oneway");
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<SearchForm>({
     from: "DAC",
     to: "DXB",
     departure_date: "",
@@ -48,7 +122,8 @@ export default function FlightSearch() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] =
+    useState<FlightSearchResponse | null>(null);
 
   const [selectedOffers, setSelectedOffers] =
     useState<SelectedOffers>({});
@@ -73,7 +148,9 @@ export default function FlightSearch() {
   const validateAirport = (code: string) =>
     /^[A-Z]{3}$/.test(code.trim());
 
-  const formatDate = (value: any) => {
+  const formatDate = (
+    value: string | number | null | undefined
+  ) => {
     if (!value) return "Not available";
 
     const date = new Date(value);
@@ -91,7 +168,9 @@ export default function FlightSearch() {
     });
   };
 
-  const formatDuration = (seconds: any) => {
+  const formatDuration = (
+    seconds: number | string | null | undefined
+  ) => {
     const total = Number(seconds);
 
     if (!Number.isFinite(total) || total < 0) {
@@ -109,7 +188,12 @@ export default function FlightSearch() {
       maximumFractionDigits: 2,
     })}`;
 
-  const getBaggage = (bagsPrice: any) => {
+  const getBaggage = (
+    bagsPrice:
+      | Record<string, number | string | null>
+      | null
+      | undefined
+  ) => {
     if (!bagsPrice || typeof bagsPrice !== "object") {
       return "Not specified";
     }
@@ -136,12 +220,12 @@ export default function FlightSearch() {
         name === "from" || name === "to"
           ? value.toUpperCase().slice(0, 3)
           : ["adults", "children", "infants"].includes(name)
-          ? value === ""
-            ? ""
-            : name === "adults"
-            ? Math.min(9, Math.max(1, Number(value)))
-            : Math.min(9, Math.max(0, Number(value)))
-          : value,
+            ? value === ""
+              ? ""
+              : name === "adults"
+                ? Math.min(9, Math.max(1, Number(value)))
+                : Math.min(9, Math.max(0, Number(value)))
+            : value,
     }));
   };
 
@@ -209,7 +293,7 @@ export default function FlightSearch() {
    */
 
   const renderItinerary = (
-    itinerary: any,
+    itinerary: FlightItinerary | undefined,
     title: string
   ) => {
     const flightSegments = itinerary?.segments || [];
@@ -220,7 +304,7 @@ export default function FlightSearch() {
       <div className="mt-3">
         <h6 className="fw-bold mb-3">{title}</h6>
 
-        {flightSegments.map((segment: any, index: number) => (
+        {flightSegments.map((segment, index) => (
           <div
             key={`${segment.flight_no || "segment"}-${index}`}
             className="border rounded p-3 mb-2 bg-light"
@@ -295,11 +379,11 @@ export default function FlightSearch() {
   const multiSegments = results?.data?.segments || [];
 
   const selectedMultiOffers = multiSegments.map(
-    (segment: any, index: number) => {
+    (segment, index) => {
       const offerId = selectedOffers[index];
 
       return (segment.offers || []).find(
-        (offer: any) => offer.id === offerId
+        (offer) => offer.id === offerId
       );
     }
   );
@@ -312,7 +396,7 @@ export default function FlightSearch() {
     selectedCount === multiSegments.length;
 
   const totalSupplierUSD = selectedMultiOffers.reduce(
-    (total: number, offer: any) =>
+    (total, offer) =>
       total + (offer ? Number(offer.price || 0) : 0),
     0
   );
@@ -444,7 +528,7 @@ export default function FlightSearch() {
       return;
     }
 
-    let searchData: any;
+    let searchData: FlightSearchRequest;
 
     if (tripType === "multicity") {
       if (segments.length < 2 || segments.length > 6) {
@@ -615,13 +699,12 @@ export default function FlightSearch() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        (await response.json()) as FlightSearchResponse;
 
       if (!response.ok || !data.success) {
         const validationErrors = data.errors
-          ? Object.values(data.errors)
-              .flat()
-              .join(" ")
+          ? Object.values(data.errors).flat().join(" ")
           : "";
 
         throw new Error(
@@ -632,9 +715,11 @@ export default function FlightSearch() {
       }
 
       setResults(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err.message || "Cannot connect to Laravel API."
+        err instanceof Error
+          ? err.message
+          : "Cannot connect to Laravel API."
       );
     } finally {
       setLoading(false);
@@ -709,8 +794,8 @@ export default function FlightSearch() {
                 {type === "oneway"
                   ? "One Way"
                   : type === "roundtrip"
-                  ? "Round Trip"
-                  : "Multi-City"}
+                    ? "Round Trip"
+                    : "Multi-City"}
               </span>
             </label>
           ))}
@@ -1048,7 +1133,7 @@ export default function FlightSearch() {
                 </div>
 
                 {multiSegments.map(
-                  (segment: any, index: number) => {
+                  (segment, index) => {
                     const segmentOffers =
                       segment.offers || [];
 
@@ -1084,7 +1169,7 @@ export default function FlightSearch() {
                           )}
 
                           {segmentOffers.map(
-                            (offer: any, offerIndex: number) => {
+                            (offer, offerIndex) => {
                               const outbound = offer.outbound;
 
                               const flightParts =
@@ -1107,8 +1192,7 @@ export default function FlightSearch() {
                               const flightNumbers =
                                 flightParts
                                   .map(
-                                    (item: any) =>
-                                      item.flight_no
+                                    (item) => item.flight_no
                                   )
                                   .filter(Boolean)
                                   .join(", ");
@@ -1358,21 +1442,21 @@ export default function FlightSearch() {
                     )}
 
                     {allSegmentsSelected && (
-  <>
-    <div className="alert alert-success mt-3 mb-3">
-      All segments selected. Total itinerary
-      price calculated successfully.
-    </div>
+                      <>
+                        <div className="alert alert-success mt-3 mb-3">
+                          All segments selected. Total itinerary
+                          price calculated successfully.
+                        </div>
 
-    <button
-      type="button"
-      className="btn btn-success btn-lg w-100"
-      onClick={continueToPassengerDetails}
-    >
-      Review & Passenger Details →
-    </button>
-  </>
-)}
+                        <button
+                          type="button"
+                          className="btn btn-success btn-lg w-100"
+                          onClick={continueToPassengerDetails}
+                        >
+                          Review & Passenger Details →
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -1565,7 +1649,7 @@ export default function FlightSearch() {
                           </h6>
 
                           {selectedMultiOffers.map(
-                            (offer: any, index: number) => {
+                            (offer, index) => {
                               if (!offer) return null;
 
                               const flightParts =
@@ -1777,7 +1861,7 @@ export default function FlightSearch() {
                   </div>
                 )}
 
-                {offers.map((offer: any, index: number) => {
+                {offers.map((offer, index) => {
                   const outbound = offer.outbound;
 
                   const firstSegment =
@@ -1792,7 +1876,7 @@ export default function FlightSearch() {
                   const flightNumbers = (
                     outbound?.segments || []
                   )
-                    .map((segment: any) => segment.flight_no)
+                    .map((segment) => segment.flight_no)
                     .filter(Boolean)
                     .join(", ");
 
@@ -1849,7 +1933,7 @@ export default function FlightSearch() {
                                 form.from}
                               {" → "}
                               {outbound?.segments?.[
-                                outbound.segments.length - 1
+                                (outbound.segments?.length || 1) - 1
                               ]?.destination ||
                                 results.search?.to ||
                                 form.to}
@@ -1867,7 +1951,7 @@ export default function FlightSearch() {
                                 <strong>Arrival:</strong>{" "}
                                 {formatDate(
                                   outbound?.segments?.[
-                                    outbound.segments.length - 1
+                                    (outbound.segments?.length || 1) - 1
                                   ]?.arrival
                                 )}
                               </div>
