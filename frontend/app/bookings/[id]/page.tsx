@@ -64,10 +64,7 @@ export default function BookingDetailsPage() {
   }, []);
 
   useEffect(() => {
-    if (!bookingId) {
-      setLoading(false);
-      return;
-    }
+    if (!bookingId) return;
 
     const timer = window.setTimeout(() => {
       void loadBooking(bookingId);
@@ -77,6 +74,14 @@ export default function BookingDetailsPage() {
       window.clearTimeout(timer);
     };
   }, [bookingId, loadBooking]);
+
+  if (!bookingId) {
+    return (
+      <div className="container py-5">
+        <h4>Booking Not Found</h4>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -95,13 +100,9 @@ export default function BookingDetailsPage() {
   }
 
   return (
-    <div
-      className="container py-5"
-      style={{ maxWidth: "900px" }}
-    >
+    <div className="container py-5" style={{ maxWidth: "900px" }}>
       <div className="card shadow-lg border-0">
         <div className="card-body p-5">
-
           <div className="text-center mb-4">
             <img
               src="/images/logo.jpg"
@@ -198,7 +199,6 @@ export default function BookingDetailsPage() {
               ← Back
             </button>
           </div>
-
         </div>
       </div>
     </div>
