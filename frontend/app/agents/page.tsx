@@ -105,9 +105,7 @@ export default function AgentsPage() {
     currentPage * PER_PAGE
   );
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
+  
 
   // =====================================================
   // FORM
@@ -461,9 +459,10 @@ export default function AgentsPage() {
                   className="form-control"
                   placeholder="Search by agency, owner, email, phone or ID..."
                   value={search}
-                  onChange={(e) =>
-                    setSearch(e.target.value)
-                  }
+                 onChange={(e) => {
+                   setSearch(e.target.value);
+                   setCurrentPage(1);
+                 }}
                 />
 
               </div>
