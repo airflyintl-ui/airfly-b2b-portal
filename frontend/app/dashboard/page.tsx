@@ -77,22 +77,22 @@ export default function Dashboard() {
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("agent");
-
       router.replace("/login");
     }
   };
 
   // LOAD DASHBOARD
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      router.replace("/login");
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
     const loadDashboard = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
       try {
         const response = await fetch(`${API}/dashboard`, {
           method: "GET",
@@ -110,14 +110,14 @@ export default function Dashboard() {
         if (response.status === 401) {
           localStorage.removeItem("token");
           localStorage.removeItem("agent");
-
           router.replace("/login");
           return;
         }
 
         if (!response.ok || !data.success) {
-          alert(data.message || "Unable to load dashboard");
-          return;
+          throw new Error(
+            data.message || "Unable to load dashboard"
+          );
         }
 
         const savedAgent = JSON.parse(
@@ -135,20 +135,35 @@ export default function Dashboard() {
             "",
         };
 
-        setAgent(agentData);
-        setDashboard(data);
+        if (isMounted) {
+          setAgent(agentData);
+          setDashboard(data);
+        }
       } catch (error) {
         console.error("Dashboard Error:", error);
 
-        alert(
-          "Cannot connect to Laravel API.\n\nPlease check the backend."
-        );
+        if (isMounted) {
+          alert(
+            error instanceof Error
+              ? error.message
+              : "Cannot connect to Laravel API. Please check the backend."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    void loadDashboard();
+    const timer = window.setTimeout(() => {
+      void loadDashboard();
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timer);
+    };
   }, [router]);
 
   if (loading) {
@@ -362,19 +377,13 @@ export default function Dashboard() {
                   {latestBookings.map((booking) => (
                     <tr key={booking.id}>
                       <td>{booking.id}</td>
-
-                      <td>
-                        {booking.pnr || "-"}
-                      </td>
-
+                      <td>{booking.pnr || "-"}</td>
                       <td>
                         {booking.booking_status || "-"}
                       </td>
-
                       <td>
                         {booking.payment_status || "-"}
                       </td>
-
                       <td>
                         ৳ {booking.total_amount ?? "0.00"}
                       </td>
