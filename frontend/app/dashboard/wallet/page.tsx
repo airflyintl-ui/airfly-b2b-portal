@@ -46,6 +46,7 @@ export default function WalletPage() {
     if (!token) {
       setError("You are not logged in. Please login first.");
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
@@ -65,7 +66,7 @@ export default function WalletPage() {
       let data: WalletResponse;
 
       try {
-        data = JSON.parse(responseText);
+        data = JSON.parse(responseText) as WalletResponse;
       } catch {
         throw new Error(
           `Invalid response from Laravel API. HTTP Status: ${response.status}`
@@ -97,7 +98,7 @@ export default function WalletPage() {
 
       if (savedAgent) {
         try {
-          setAgent(JSON.parse(savedAgent));
+          setAgent(JSON.parse(savedAgent) as Agent);
         } catch {
           setAgent({});
         }
@@ -116,11 +117,21 @@ export default function WalletPage() {
     }
   }, []);
 
+  // LOAD WALLET
   useEffect(() => {
-    loadWallet();
+    const timer = window.setTimeout(() => {
+      void loadWallet();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [loadWallet]);
 
+  // REFRESH WALLET
   const handleRefresh = async () => {
+    if (refreshing) return;
+
     setRefreshing(true);
     await loadWallet();
   };
@@ -198,9 +209,7 @@ export default function WalletPage() {
         minHeight: "100vh",
       }}
     >
-      {/* ========================================= */}
       {/* HEADER */}
-      {/* ========================================= */}
 
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -223,9 +232,7 @@ export default function WalletPage() {
         </button>
       </div>
 
-      {/* ========================================= */}
       {/* LOADING */}
-      {/* ========================================= */}
 
       {loading && (
         <div className="card border-0 shadow-sm">
@@ -242,9 +249,7 @@ export default function WalletPage() {
         </div>
       )}
 
-      {/* ========================================= */}
       {/* ERROR */}
-      {/* ========================================= */}
 
       {!loading && error && (
         <div className="card border-0 shadow-sm">
@@ -275,15 +280,11 @@ export default function WalletPage() {
         </div>
       )}
 
-      {/* ========================================= */}
       {/* WALLET CONTENT */}
-      {/* ========================================= */}
 
       {!loading && !error && (
         <>
-          {/* ========================================= */}
           {/* SUMMARY CARDS */}
-          {/* ========================================= */}
 
           <div className="row g-4 mb-4">
 
@@ -292,7 +293,6 @@ export default function WalletPage() {
             <div className="col-md-6 col-xl-3">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body p-4">
-
                   <div className="text-muted mb-2">
                     Current Wallet Balance
                   </div>
@@ -304,7 +304,6 @@ export default function WalletPage() {
                   <div className="text-success mt-2">
                     ● Available Balance
                   </div>
-
                 </div>
               </div>
             </div>
@@ -314,7 +313,6 @@ export default function WalletPage() {
             <div className="col-md-6 col-xl-3">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body p-4">
-
                   <div className="text-muted mb-2">
                     Agent ID
                   </div>
@@ -327,7 +325,6 @@ export default function WalletPage() {
                     {agent.agency_name ||
                       "Air Fly International Agent"}
                   </div>
-
                 </div>
               </div>
             </div>
@@ -337,7 +334,6 @@ export default function WalletPage() {
             <div className="col-md-6 col-xl-3">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body p-4">
-
                   <div className="text-muted mb-2">
                     Total Credit
                   </div>
@@ -349,7 +345,6 @@ export default function WalletPage() {
                   <div className="text-muted mt-2">
                     Money added to wallet
                   </div>
-
                 </div>
               </div>
             </div>
@@ -359,7 +354,6 @@ export default function WalletPage() {
             <div className="col-md-6 col-xl-3">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body p-4">
-
                   <div className="text-muted mb-2">
                     Total Debit
                   </div>
@@ -371,21 +365,16 @@ export default function WalletPage() {
                   <div className="text-muted mt-2">
                     Money deducted from wallet
                   </div>
-
                 </div>
               </div>
             </div>
 
           </div>
 
-          {/* ========================================= */}
           {/* AGENT INFORMATION */}
-          {/* ========================================= */}
 
           <div className="card border-0 shadow-sm mb-4">
-
             <div className="card-body p-4">
-
               <div className="row">
 
                 <div className="col-md-4 mb-3 mb-md-0">
@@ -419,20 +408,14 @@ export default function WalletPage() {
                 </div>
 
               </div>
-
             </div>
           </div>
 
-          {/* ========================================= */}
           {/* TRANSACTION HISTORY */}
-          {/* ========================================= */}
 
           <div className="card border-0 shadow-sm">
-
             <div className="card-header bg-white py-3">
-
               <div className="d-flex justify-content-between align-items-center">
-
                 <div>
                   <h5 className="fw-bold mb-1">
                     Transaction History
@@ -449,17 +432,12 @@ export default function WalletPage() {
                     Wallet Ledger
                   </span>
                 </div>
-
               </div>
-
             </div>
 
             <div className="card-body p-0">
-
               {statement.length === 0 ? (
-
                 <div className="text-center py-5">
-
                   <div
                     style={{
                       fontSize: "52px",
@@ -476,75 +454,36 @@ export default function WalletPage() {
                   <p className="text-muted mb-0">
                     Your wallet transactions will appear here.
                   </p>
-
                 </div>
-
               ) : (
-
                 <div className="table-responsive">
-
                   <table className="table table-hover align-middle mb-0">
-
                     <thead className="table-light">
-
                       <tr>
-
-                        <th className="px-4">
-                          ID
-                        </th>
-
-                        <th>
-                          Date
-                        </th>
-
-                        <th>
-                          Type
-                        </th>
-
-                        <th>
-                          Description
-                        </th>
-
-                        <th>
-                          Reference
-                        </th>
-
-                        <th className="text-end">
-                          Amount
-                        </th>
-
+                        <th className="px-4">ID</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Reference</th>
+                        <th className="text-end">Amount</th>
                         <th className="text-end px-4">
                           Balance After
                         </th>
-
                       </tr>
-
                     </thead>
 
                     <tbody>
-
                       {statement.map((transaction) => {
-
                         const type =
                           getTransactionType(transaction);
 
-                        const isCredit =
-                          type.toLowerCase() === "credit";
-
                         return (
-                          <tr
-                            key={transaction.id}
-                          >
-
-                            {/* ID */}
-
+                          <tr key={transaction.id}>
                             <td className="px-4">
                               <strong>
                                 #{transaction.id}
                               </strong>
                             </td>
-
-                            {/* DATE */}
 
                             <td>
                               <small>
@@ -553,8 +492,6 @@ export default function WalletPage() {
                                 )}
                               </small>
                             </td>
-
-                            {/* TYPE */}
 
                             <td>
                               <span
@@ -566,16 +503,12 @@ export default function WalletPage() {
                               </span>
                             </td>
 
-                            {/* DESCRIPTION */}
-
                             <td>
                               <div className="fw-semibold">
                                 {transaction.remarks ||
                                   "Wallet Transaction"}
                               </div>
                             </td>
-
-                            {/* REFERENCE */}
 
                             <td>
                               {transaction.reference ? (
@@ -587,44 +520,30 @@ export default function WalletPage() {
                               )}
                             </td>
 
-                            {/* AMOUNT */}
-
                             <td
                               className={`text-end fw-bold ${getAmountClass(
                                 type
                               )}`}
                             >
                               {getAmountPrefix(type)} ৳{" "}
-                              {formatAmount(
-                                transaction.amount
-                              )}
+                              {formatAmount(transaction.amount)}
                             </td>
 
-                            {/* BALANCE AFTER */}
-
                             <td className="text-end px-4">
-
                               <strong>
                                 ৳{" "}
                                 {formatAmount(
                                   transaction.balance_after
                                 )}
                               </strong>
-
                             </td>
-
                           </tr>
                         );
                       })}
-
                     </tbody>
-
                   </table>
-
                 </div>
-
               )}
-
             </div>
           </div>
         </>
