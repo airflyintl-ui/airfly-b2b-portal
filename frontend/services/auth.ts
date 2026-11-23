@@ -1,6 +1,16 @@
+
 import API from "./api";
 
-export async function login(data: any) {
+type AuthData = {
+  email: string;
+  password: string;
+  agency_name?: string;
+  owner_name?: string;
+  phone?: string;
+  password_confirmation?: string;
+};
+
+export async function login(data: AuthData) {
   const res = await fetch(`${API}/login`, {
     method: "POST",
     headers: {
@@ -12,7 +22,7 @@ export async function login(data: any) {
   return await res.json();
 }
 
-export async function register(data: any) {
+export async function register(data: AuthData) {
   const res = await fetch(`${API}/register`, {
     method: "POST",
     headers: {
