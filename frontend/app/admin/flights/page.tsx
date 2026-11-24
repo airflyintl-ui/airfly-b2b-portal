@@ -3,124 +3,126 @@
 import { useEffect, useState } from "react";
 
 import FlightForm from "./FlightForm";
-import FlightTable from "./FlightTable";
+import FlightTable, { type Flight } from "./FlightTable";
 import EditFlightModal from "./EditFlightModal";
 
-export default function FlightsPage() {
-  // =========================
-  // States
-  // =========================
+type Airline = {
+  id: number;
+  name: string;
+  code?: string;
+  logo?: string | null;
+  status?: boolean | number;
+};
 
+type AirlinesResponse = {
+  success: boolean;
+  airlines: Airline[];
+  message?: string;
+};
+
+type FlightsResponse = {
+  success: boolean;
+  flights: Flight[];
+  message?: string;
+};
+
+type ApiResponse = {
+  success: boolean;
+  message?: string;
+};
+
+export default function FlightsPage() {
   const [loading, setLoading] = useState(true);
 
-  const [airlines, setAirlines] = useState<any[]>([]);
-  const [flights, setFlights] = useState<any[]>([]);
+  const [airlines, setAirlines] = useState<Airline[]>([]);
+  const [flights, setFlights] = useState<Flight[]>([]);
 
   const [search, setSearch] = useState("");
 
   // Add Flight
-
   const [airlineId, setAirlineId] = useState("");
-
   const [flightNo, setFlightNo] = useState("");
-
   const [from, setFrom] = useState("");
-
   const [to, setTo] = useState("");
-
   const [departureTime, setDepartureTime] = useState("");
-
   const [arrivalTime, setArrivalTime] = useState("");
-
   const [economyFare, setEconomyFare] = useState("");
-
   const [businessFare, setBusinessFare] = useState("");
-
   const [availableSeats, setAvailableSeats] = useState("");
 
   // Edit Flight
-
   const [editId, setEditId] = useState<number | null>(null);
-
   const [editAirlineId, setEditAirlineId] = useState("");
-
   const [editFlightNo, setEditFlightNo] = useState("");
-
   const [editFrom, setEditFrom] = useState("");
-
   const [editTo, setEditTo] = useState("");
-
   const [editDepartureTime, setEditDepartureTime] = useState("");
-
   const [editArrivalTime, setEditArrivalTime] = useState("");
-
   const [editEconomyFare, setEditEconomyFare] = useState("");
-
   const [editBusinessFare, setEditBusinessFare] = useState("");
-
   const [editAvailableSeats, setEditAvailableSeats] = useState("");
 
-  // =========================
   // Load Data
-  // =========================
-
   useEffect(() => {
-    loadAirlines();
-    loadFlights();
+    const timer = window.setTimeout(() => {
+      void loadAirlines();
+      void loadFlights();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
-async function loadAirlines() {
-  try {
-    const res = await fetch("http://127.0.0.1:8000/api/airlines", {
-      headers: {
-        Accept: "application/json",
-      },
-    });
 
-    const data = await res.json();
+  async function loadAirlines() {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/airlines", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-    console.log("Airlines Response:", data);
+      const data: AirlinesResponse = await res.json();
 
-    if (data.success) {
-      setAirlines(data.airlines);
-    } else {
+      console.log("Airlines Response:", data);
+
+      if (data.success && Array.isArray(data.airlines)) {
+        setAirlines(data.airlines);
+      } else {
+        setAirlines([]);
+      }
+    } catch (err) {
+      console.error("Load Airlines Error:", err);
       setAirlines([]);
     }
-  } catch (err) {
-    console.error("Load Airlines Error:", err);
-    setAirlines([]);
   }
-}
 
   async function loadFlights() {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch(
-        "http://127.0.0.1:8000/api/flights",
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await fetch("http://127.0.0.1:8000/api/flights", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      const data = await res.json();
+      const data: FlightsResponse = await res.json();
 
-      if (data.success) {
+      if (data.success && Array.isArray(data.flights)) {
         setFlights(data.flights);
+      } else {
+        setFlights([]);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Load Flights Error:", err);
+      setFlights([]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
-    // =========================
-  // Save Flight
-  // =========================
 
-  async function saveFlight(e: React.FormEvent) {
+  // Save Flight
+  async function saveFlight(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const token = localStorage.getItem("token");
@@ -146,9 +148,9 @@ async function loadAirlines() {
         }),
       });
 
-      const data = await res.json();
+      const data: ApiResponse = await res.json();
 
-      alert(data.message);
+      alert(data.message || "Flight save request completed");
 
       if (data.success) {
         setAirlineId("");
@@ -161,7 +163,7 @@ async function loadAirlines() {
         setBusinessFare("");
         setAvailableSeats("");
 
-        loadFlights();
+        await loadFlights();
       }
     } catch (err) {
       console.error(err);
@@ -169,10 +171,7 @@ async function loadAirlines() {
     }
   }
 
-  // =========================
   // Delete Flight
-  // =========================
-
   async function deleteFlight(id: number) {
     if (!confirm("Are you sure you want to delete this flight?")) {
       return;
@@ -192,12 +191,12 @@ async function loadAirlines() {
         }
       );
 
-      const data = await res.json();
+      const data: ApiResponse = await res.json();
 
-      alert(data.message);
+      alert(data.message || "Delete request completed");
 
       if (data.success) {
-        loadFlights();
+        await loadFlights();
       }
     } catch (err) {
       console.error(err);
@@ -205,14 +204,11 @@ async function loadAirlines() {
     }
   }
 
-  // =========================
   // Open Edit Modal
-  // =========================
-
-  function openEditFlight(item: any) {
+  function openEditFlight(item: Flight) {
     setEditId(item.id);
 
-    setEditAirlineId(String(item.airline_id));
+    setEditAirlineId(String(item.airline_id ?? ""));
     setEditFlightNo(item.flight_no);
     setEditFrom(item.from);
     setEditTo(item.to);
@@ -225,12 +221,9 @@ async function loadAirlines() {
     setEditAvailableSeats(String(item.available_seats));
   }
 
-  // =========================
   // Update Flight
-  // =========================
-
   async function updateFlight() {
-    if (!editId) return;
+    if (editId === null) return;
 
     const token = localStorage.getItem("token");
 
@@ -258,119 +251,89 @@ async function loadAirlines() {
         }
       );
 
-      const data = await res.json();
+      const data: ApiResponse = await res.json();
 
-      alert(data.message);
+      alert(data.message || "Update request completed");
 
       if (data.success) {
         setEditId(null);
-        loadFlights();
+        await loadFlights();
       }
     } catch (err) {
       console.error(err);
       alert("Update failed");
     }
-  }  // =========================
-  // JSX
-  // =========================
+  }
 
+  // JSX
   return (
     <div className="container-fluid py-4">
-
       <h2 className="fw-bold mb-4">
         Flight Management
       </h2>
 
       <div className="row">
-
         <div className="col-lg-4">
-
           <FlightForm
             airlines={airlines}
-
             airlineId={airlineId}
             setAirlineId={setAirlineId}
-
             flightNo={flightNo}
             setFlightNo={setFlightNo}
-
             from={from}
             setFrom={setFrom}
-
             to={to}
             setTo={setTo}
-
             departureTime={departureTime}
             setDepartureTime={setDepartureTime}
-
             arrivalTime={arrivalTime}
             setArrivalTime={setArrivalTime}
-
             economyFare={economyFare}
             setEconomyFare={setEconomyFare}
-
             businessFare={businessFare}
             setBusinessFare={setBusinessFare}
-
             availableSeats={availableSeats}
             setAvailableSeats={setAvailableSeats}
-
             saveFlight={saveFlight}
           />
-
         </div>
 
         <div className="col-lg-8">
-
           <FlightTable
             loading={loading}
             flights={flights}
-
             search={search}
             setSearch={setSearch}
-
             openEditFlight={openEditFlight}
-
             deleteFlight={deleteFlight}
           />
-
         </div>
-
       </div>
-            <EditFlightModal
+
+      <EditFlightModal
         show={editId !== null}
         airlines={airlines}
         onClose={() => setEditId(null)}
         onUpdate={updateFlight}
-
         airlineId={editAirlineId}
         setAirlineId={setEditAirlineId}
-
         flightNo={editFlightNo}
         setFlightNo={setEditFlightNo}
-
         from={editFrom}
         setFrom={setEditFrom}
-
         to={editTo}
         setTo={setEditTo}
-
         departureTime={editDepartureTime}
         setDepartureTime={setEditDepartureTime}
-
         arrivalTime={editArrivalTime}
         setArrivalTime={setEditArrivalTime}
-
         economyFare={editEconomyFare}
         setEconomyFare={setEditEconomyFare}
-
         businessFare={editBusinessFare}
         setBusinessFare={setEditBusinessFare}
-
         availableSeats={editAvailableSeats}
         setAvailableSeats={setEditAvailableSeats}
       />
-
     </div>
   );
 }
