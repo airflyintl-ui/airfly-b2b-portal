@@ -180,7 +180,7 @@ export default function AgentGroupFarePage() {
       }
 
       const body = new FormData();
-      body.append("offer_id", form.offer_id);
+      body.append("group_fare_offer_id", form.offer_id);
       body.append("passenger_count", String(passengerCount));
       body.append("contact_person", form.contact_person.trim());
       body.append("contact_number", form.contact_number.trim());
