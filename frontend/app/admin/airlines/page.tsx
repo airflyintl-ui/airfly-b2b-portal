@@ -2,9 +2,27 @@
 
 import { useEffect, useState } from "react";
 
-export default function AirlinesPage() {
+type Airline = {
+  id: number;
+  name: string;
+  code: string;
+  logo?: string | null;
+  status: boolean | number;
+};
 
-  const [airlines, setAirlines] = useState<any[]>([]);
+type AirlinesResponse = {
+  success: boolean;
+  message?: string;
+  airlines: Airline[];
+};
+
+type ApiResponse = {
+  success: boolean;
+  message: string;
+};
+
+export default function AirlinesPage() {
+  const [airlines, setAirlines] = useState<Airline[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -18,15 +36,17 @@ export default function AirlinesPage() {
   const [editCode, setEditCode] = useState("");
 
   useEffect(() => {
-    loadAirlines();
+    const timer = window.setTimeout(() => {
+      void loadAirlines();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   async function loadAirlines() {
-
     const token = localStorage.getItem("token");
 
     try {
-
       const res = await fetch(
         "http://127.0.0.1:8000/api/airlines",
         {
@@ -37,26 +57,22 @@ export default function AirlinesPage() {
         }
       );
 
-      const data = await res.json();
+      const data = (await res.json()) as AirlinesResponse;
 
-      if (data.success) {
+      if (data.success && Array.isArray(data.airlines)) {
         setAirlines(data.airlines);
       }
-
     } catch (err) {
       console.log(err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-
   }
 
-  async function saveAirline(e: React.FormEvent) {
-
+  async function saveAirline(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const token = localStorage.getItem("token");
-
     const form = new FormData();
 
     form.append("name", name);
@@ -66,106 +82,104 @@ export default function AirlinesPage() {
       form.append("logo", logo);
     }
 
-    const res = await fetch(
-      "http://127.0.0.1:8000/api/airlines",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: form,
+    try {
+      const res = await fetch(
+        "http://127.0.0.1:8000/api/airlines",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: form,
+        }
+      );
+
+      const data = (await res.json()) as ApiResponse;
+
+      alert(data.message);
+
+      if (data.success) {
+        setName("");
+        setCode("");
+        setLogo(null);
+
+        await loadAirlines();
       }
-    );
-
-    const data = await res.json();
-
-    alert(data.message);
-
-    if (data.success) {
-
-      setName("");
-      setCode("");
-      setLogo(null);
-
-      loadAirlines();
-
+    } catch (err) {
+      console.log(err);
+      alert("Failed to save airline.");
     }
-
   }
 
   async function deleteAirline(id: number) {
-
     if (!confirm("Delete this airline?")) return;
 
     const token = localStorage.getItem("token");
 
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/airlines/${id}`,
-      {
-        method: "DELETE",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/airlines/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = (await res.json()) as ApiResponse;
+
+      alert(data.message);
+
+      if (data.success) {
+        await loadAirlines();
       }
-    );
-
-    const data = await res.json();
-
-    alert(data.message);
-
-    if (data.success) {
-
-      loadAirlines();
-
+    } catch (err) {
+      console.log(err);
+      alert("Failed to delete airline.");
     }
-
   }
 
-  function openEdit(item: any) {
-
+  function openEdit(item: Airline) {
     setEditId(item.id);
-
     setEditName(item.name);
-
     setEditCode(item.code);
-
   }
 
   async function updateAirline() {
-
     if (!editId) return;
 
     const token = localStorage.getItem("token");
-
     const form = new FormData();
 
     form.append("name", editName);
     form.append("code", editCode);
 
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/airlines/${editId}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: form,
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/airlines/${editId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: form,
+        }
+      );
+
+      const data = (await res.json()) as ApiResponse;
+
+      alert(data.message);
+
+      if (data.success) {
+        setEditId(null);
+        await loadAirlines();
       }
-    );
-
-    const data = await res.json();
-
-    alert(data.message);
-
-    if (data.success) {
-
-      setEditId(null);
-
-      loadAirlines();
-
+    } catch (err) {
+      console.log(err);
+      alert("Failed to update airline.");
     }
-
   }
 
   const filteredAirlines = airlines.filter((item) =>
@@ -173,239 +187,171 @@ export default function AirlinesPage() {
     item.code.toLowerCase().includes(search.toLowerCase())
   );
 
-  return (<div className="container-fluid py-4">
+  return (
+    <div className="container-fluid py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="fw-bold">Airline Management</h2>
 
-  <div className="d-flex justify-content-between align-items-center mb-4">
-
-    <h2 className="fw-bold">Airline Management</h2>
-
-    <input
-      type="text"
-      className="form-control"
-      style={{ width: "280px" }}
-      placeholder="Search Airline..."
-      value={search}
-      onChange={(e) => setSearch(e.target.value)}
-    />
-
-  </div>
-
-  <div className="row">
-
-    {/* Add Airline */}
-
-    <div className="col-lg-4">
-
-      <div className="card shadow">
-
-        <div className="card-header bg-primary text-white">
-          Add Airline
-        </div>
-
-        <div className="card-body">
-
-          <form onSubmit={saveAirline}>
-
-            <div className="mb-3">
-
-              <label className="form-label">
-                Airline Name
-              </label>
-
-              <input
-                className="form-control"
-                value={name}
-                onChange={(e)=>setName(e.target.value)}
-                required
-              />
-
-            </div>
-
-            <div className="mb-3">
-
-              <label className="form-label">
-                IATA Code
-              </label>
-
-              <input
-                className="form-control"
-                value={code}
-                onChange={(e)=>setCode(e.target.value)}
-                required
-              />
-
-            </div>
-
-            <div className="mb-3">
-
-              <label className="form-label">
-                Logo
-              </label>
-
-              <input
-                type="file"
-                className="form-control"
-                onChange={(e)=>setLogo(e.target.files?.[0] || null)}
-              />
-
-            </div>
-
-            <button
-              className="btn btn-success w-100"
-            >
-              Save Airline
-            </button>
-
-          </form>
-
-        </div>
-
+        <input
+          type="text"
+          className="form-control"
+          style={{ width: "280px" }}
+          placeholder="Search Airline..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-    </div>
+      <div className="row">
+        {/* Add Airline */}
+        <div className="col-lg-4">
+          <div className="card shadow">
+            <div className="card-header bg-primary text-white">
+              Add Airline
+            </div>
 
-    {/* Airline Table */}
+            <div className="card-body">
+              <form onSubmit={saveAirline}>
+                <div className="mb-3">
+                  <label className="form-label">
+                    Airline Name
+                  </label>
 
-    <div className="col-lg-8">
+                  <input
+                    className="form-control"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
 
-      <div className="card shadow">
+                <div className="mb-3">
+                  <label className="form-label">
+                    IATA Code
+                  </label>
 
-        <div className="card-header bg-dark text-white">
-          Airline List
+                  <input
+                    className="form-control"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">
+                    Logo
+                  </label>
+
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setLogo(e.target.files?.[0] || null)
+                    }
+                  />
+                </div>
+
+                <button className="btn btn-success w-100">
+                  Save Airline
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
 
-        <div className="card-body p-0">
+        {/* Airline Table */}
+        <div className="col-lg-8">
+          <div className="card shadow">
+            <div className="card-header bg-dark text-white">
+              Airline List
+            </div>
 
-          <table className="table table-hover table-bordered mb-0">
-
-            <thead className="table-dark">
-
-              <tr>
-
-                <th>ID</th>
-                <th>Name</th>
-                <th>Code</th>
-                <th>Logo</th>
-                <th>Status</th>
-                <th style={{ width: '180px' }}>Action</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {loading ? (
-
-                <tr>
-
-                  <td
-                    colSpan={6}
-                    className="text-center"
-                  >
-                    Loading...
-                  </td>
-
-                </tr>
-
-              ) : filteredAirlines.length===0 ? (
-
-                <tr>
-
-                  <td
-                    colSpan={6}
-                    className="text-center"
-                  >
-                    No Airline Found
-                  </td>
-
-                </tr>
-
-              ) : (
-
-                filteredAirlines.map((item:any)=>(
-
-                  <tr key={item.id}>
-
-                    <td>{item.id}</td>
-
-                    <td>{item.name}</td>
-
-                    <td>{item.code}</td>
-
-                    <td>
-
-                      {item.logo ? (
-
-                        <img
-                          src={`http://127.0.0.1:8000/uploads/airlines/${item.logo}`}
-                          width={50}
-                          alt=""
-                        />
-
-                      ) : (
-
-                        "No Logo"
-
-                      )}
-
-                    </td>
-
-                    <td>
-
-                      {item.status ? (
-
-                        <span className="badge bg-success">
-                          Active
-                        </span>
-
-                      ) : (
-
-                        <span className="badge bg-danger">
-                          Inactive
-                        </span>
-
-                      )}
-
-                    </td>
-
-                    <td>
-
-                      <button
-                        className="btn btn-primary btn-sm me-2"
-                        onClick={()=>openEdit(item)}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={()=>deleteAirline(item.id)}
-                      >
-                        Delete
-                      </button>
-
-                    </td>
-
+            <div className="card-body p-0">
+              <table className="table table-hover table-bordered mb-0">
+                <thead className="table-dark">
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Logo</th>
+                    <th>Status</th>
+                    <th style={{ width: "180px" }}>Action</th>
                   </tr>
+                </thead>
 
-                ))
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center">
+                        Loading...
+                      </td>
+                    </tr>
+                  ) : filteredAirlines.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center">
+                        No Airline Found
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAirlines.map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.id}</td>
+                        <td>{item.name}</td>
+                        <td>{item.code}</td>
 
-              )}
+                        <td>
+                          {item.logo ? (
+                            <img
+                              src={`http://127.0.0.1:8000/uploads/airlines/${item.logo}`}
+                              width={50}
+                              alt={`${item.name} logo`}
+                            />
+                          ) : (
+                            "No Logo"
+                          )}
+                        </td>
 
-            </tbody>
+                        <td>
+                          {item.status ? (
+                            <span className="badge bg-success">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="badge bg-danger">
+                              Inactive
+                            </span>
+                          )}
+                        </td>
 
-          </table>
+                        <td>
+                          <button
+                            className="btn btn-primary btn-sm me-2"
+                            onClick={() => openEdit(item)}
+                          >
+                            Edit
+                          </button>
 
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => deleteAirline(item.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-
       </div>
 
-    </div>
-
-  </div>      {/* Edit Airline Modal */}
-
-      {editId && (
+      {/* Edit Airline Modal */}
+      {editId !== null && (
         <div
           className="modal fade show"
           style={{
@@ -414,24 +360,19 @@ export default function AirlinesPage() {
           }}
         >
           <div className="modal-dialog">
-
             <div className="modal-content">
-
               <div className="modal-header">
-
                 <h5>Edit Airline</h5>
 
                 <button
                   className="btn-close"
                   onClick={() => setEditId(null)}
-                ></button>
-
+                  aria-label="Close"
+                />
               </div>
 
               <div className="modal-body">
-
                 <div className="mb-3">
-
                   <label className="form-label">
                     Airline Name
                   </label>
@@ -441,11 +382,9 @@ export default function AirlinesPage() {
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                   />
-
                 </div>
 
                 <div className="mb-3">
-
                   <label className="form-label">
                     IATA Code
                   </label>
@@ -455,13 +394,10 @@ export default function AirlinesPage() {
                     value={editCode}
                     onChange={(e) => setEditCode(e.target.value)}
                   />
-
                 </div>
-
               </div>
 
               <div className="modal-footer">
-
                 <button
                   className="btn btn-secondary"
                   onClick={() => setEditId(null)}
@@ -475,15 +411,11 @@ export default function AirlinesPage() {
                 >
                   Update Airline
                 </button>
-
               </div>
-
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }
