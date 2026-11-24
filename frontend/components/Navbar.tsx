@@ -8,192 +8,157 @@ export default function Navbar() {
 
   const closeMenu = () => setMenuOpen(false);
 
+  const linkStyle: React.CSSProperties = {
+    color: "#ffffff",
+    textDecoration: "none",
+    fontSize: "14px",
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+  };
+
   return (
-    <>
-      <nav className="airfly-navbar">
-        <div className="container airfly-nav-container">
-          <Link href="/" className="airfly-brand" onClick={closeMenu}>
-            <span className="brand-icon">✈</span>
-            <span>
-              <strong>AIR FLY INTERNATIONAL</strong>
-              <small>B2B TRAVEL PORTAL</small>
-            </span>
-          </Link>
-
-          <button
-            className="airfly-toggler"
-            type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle navigation"
-            aria-expanded={menuOpen}
+    <nav
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 9999,
+        width: "100%",
+        backgroundColor: "#0d6efd",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+      }}
+    >
+      <div
+        className="container"
+        style={{
+          minHeight: "76px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "15px",
+          paddingTop: "10px",
+          paddingBottom: "10px",
+        }}
+      >
+        <Link
+          href="/"
+          onClick={closeMenu}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            color: "#ffffff",
+            textDecoration: "none",
+          }}
+        >
+          <span
+            style={{
+              width: "43px",
+              height: "43px",
+              display: "grid",
+              placeItems: "center",
+              background: "rgba(255,255,255,0.2)",
+              borderRadius: "10px",
+              fontSize: "24px",
+            }}
           >
-            {menuOpen ? "✕" : "☰"}
-          </button>
+            ✈
+          </span>
 
-          <div className={`airfly-menu ${menuOpen ? "menu-open" : ""}`}>
-            <Link href="/" onClick={closeMenu}>Home</Link>
-            <Link href="/#flight-search" onClick={closeMenu}>Flights</Link>
-            <Link href="/group-fare" onClick={closeMenu}>Group Fare</Link>
-            <Link href="/visa" onClick={closeMenu}>Visa</Link>
-            <Link href="/contact" onClick={closeMenu}>Contact</Link>
-
-            <Link
-              href="/login"
-              className="agent-login-btn"
-              onClick={closeMenu}
+          <span>
+            <strong style={{ display: "block", fontSize: "15px" }}>
+              AIR FLY INTERNATIONAL
+            </strong>
+            <small
+              style={{
+                display: "block",
+                fontSize: "9px",
+                letterSpacing: "2px",
+                color: "#ffffff",
+              }}
             >
-              Agent Login <span>→</span>
-            </Link>
-          </div>
+              B2B TRAVEL PORTAL
+            </small>
+          </span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle navigation"
+          aria-expanded={menuOpen}
+          style={{
+            display: "none",
+            background: "transparent",
+            border: "1px solid white",
+            color: "white",
+            padding: "7px 12px",
+            borderRadius: "6px",
+            fontSize: "22px",
+            cursor: "pointer",
+          }}
+          className="airfly-mobile-toggle"
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
+
+        <div
+          className={`airfly-nav-links ${menuOpen ? "airfly-open" : ""}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "25px",
+          }}
+        >
+          <Link href="/" onClick={closeMenu} style={linkStyle}>Home</Link>
+          <Link href="/#flight-search" onClick={closeMenu} style={linkStyle}>Flights</Link>
+          <Link href="/group-fare" onClick={closeMenu} style={linkStyle}>Group Fare</Link>
+          <Link href="/visa" onClick={closeMenu} style={linkStyle}>Visa</Link>
+          <Link href="/contact" onClick={closeMenu} style={linkStyle}>Contact</Link>
+
+          <Link
+            href="/login"
+            onClick={closeMenu}
+            style={{
+              background: "#ffc107",
+              color: "#212529",
+              padding: "11px 19px",
+              borderRadius: "6px",
+              fontSize: "14px",
+              fontWeight: 800,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Agent Login →
+          </Link>
         </div>
-      </nav>
+      </div>
 
-      <style jsx>{`
-        .airfly-navbar {
-          position: sticky;
-          top: 0;
-          z-index: 1000;
-          background: #0d6efd;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-        }
-
-        .airfly-nav-container {
-          min-height: 76px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-        }
-
-        .airfly-brand {
-          display: flex;
-          align-items: center;
-          gap: 11px;
-          color: white;
-          text-decoration: none;
-        }
-
-        .brand-icon {
-          width: 43px;
-          height: 43px;
-          display: grid;
-          place-items: center;
-          background: rgba(255, 255, 255, 0.18);
-          border-radius: 10px;
-          font-size: 24px;
-        }
-
-        .airfly-brand strong,
-        .airfly-brand small {
-          display: block;
-        }
-
-        .airfly-brand strong {
-          font-size: 16px;
-          letter-spacing: 0.5px;
-          font-weight: 850;
-        }
-
-        .airfly-brand small {
-          margin-top: 3px;
-          color: #eaf2ff;
-          font-size: 9px;
-          letter-spacing: 2px;
-          font-weight: 700;
-        }
-
-        .airfly-menu {
-          display: flex;
-          align-items: center;
-          gap: 27px;
-        }
-
-        .airfly-menu > a {
-          color: #ffffff;
-          font-size: 14px;
-          font-weight: 600;
-          text-decoration: none;
-          transition: color 0.2s;
-        }
-
-        .airfly-menu > a:hover {
-          color: #ffe082;
-        }
-
-        .airfly-menu .agent-login-btn {
-          background: #ffc107;
-          color: #212529;
-          padding: 11px 19px;
-          border-radius: 6px;
-          font-weight: 800;
-        }
-
-        .airfly-menu .agent-login-btn:hover {
-          background: #ffca2c;
-          color: #212529;
-        }
-
-        .agent-login-btn span {
-          margin-left: 7px;
-        }
-
-        .airfly-toggler {
-          display: none;
-          background: transparent;
-          border: 1px solid white;
-          color: white;
-          border-radius: 6px;
-          padding: 6px 12px;
-          font-size: 23px;
-          cursor: pointer;
-        }
-
+      <style jsx global>{`
         @media (max-width: 991px) {
-          .airfly-nav-container {
-            flex-wrap: wrap;
-            padding-top: 12px;
-            padding-bottom: 12px;
+          .airfly-mobile-toggle {
+            display: block !important;
           }
 
-          .airfly-toggler {
-            display: block;
-          }
-
-          .airfly-menu {
-            display: none;
+          .airfly-nav-links {
+            display: none !important;
             width: 100%;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 0;
-            padding: 8px 0;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0 !important;
+            padding: 10px 0;
           }
 
-          .airfly-menu.menu-open {
-            display: flex;
+          .airfly-nav-links.airfly-open {
+            display: flex !important;
           }
 
-          .airfly-menu > a {
+          .airfly-nav-links a {
             padding: 12px 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-          }
-
-          .airfly-menu .agent-login-btn {
-            margin-top: 12px;
-            text-align: center;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .airfly-brand strong {
-            font-size: 13px;
-          }
-
-          .brand-icon {
-            width: 38px;
-            height: 38px;
           }
         }
       `}</style>
-    </>
+    </nav>
   );
 }
