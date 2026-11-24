@@ -1,23 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "../../../services/api";
+
+type Agent = {
+  id: number;
+  agency_name?: string | null;
+  owner_name?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  trade_license?: string | null;
+  status?: string | null;
+};
+
+type AgentsResponse = {
+  success?: boolean;
+  message?: string;
+  agents?: Agent[];
+};
+
+type AgentUpdateResponse = {
+  success?: boolean;
+  message?: string;
+  agent?: Agent;
+};
+
+type PasswordResetResponse = {
+  success?: boolean;
+  message?: string;
+  errors?: { password?: string[] };
+};
 
 export default function AdminAgents() {
   const router = useRouter();
 
-  const [agents, setAgents] = useState<any[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState<number | null>(null);
 
-  const [resetAgent, setResetAgent] = useState<any>(null);
+  const [resetAgent, setResetAgent] = useState<Agent | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetting, setResetting] = useState(false);
 
-  const loadAgents = async () => {
+  const loadAgents = useCallback(async () => {
     const token = localStorage.getItem("admin_token");
 
     if (!token) {
@@ -37,7 +65,7 @@ export default function AdminAgents() {
         cache: "no-store",
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as AgentsResponse;
 
       if (response.status === 401 || response.status === 403) {
         setError("Admin authorization failed. Please login again.");
@@ -56,11 +84,15 @@ export default function AdminAgents() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
-    loadAgents();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadAgents();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadAgents]);
 
   const updateStatus = async (
     id: number,
@@ -92,9 +124,9 @@ export default function AdminAgents() {
         body: JSON.stringify({ status }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as AgentUpdateResponse;
 
-      if (!response.ok || !data.success) {
+      if (!response.ok || !data.success || !data.agent) {
         alert(data.message || "Unable to update agent.");
         return;
       }
@@ -102,7 +134,7 @@ export default function AdminAgents() {
       setAgents((previous) =>
         previous.map((agent) =>
           agent.id === id
-            ? { ...agent, status: data.agent.status }
+            ? { ...agent, status: data.agent?.status }
             : agent
         )
       );
@@ -161,13 +193,13 @@ export default function AdminAgents() {
         }
       );
 
-      const data = await response.json();
+      const data = (await response.json()) as PasswordResetResponse;
 
       if (!response.ok || !data.success) {
         alert(
           data.message ||
-          data.errors?.password?.[0] ||
-          "Unable to reset password."
+            data.errors?.password?.[0] ||
+            "Unable to reset password."
         );
         return;
       }
@@ -186,14 +218,8 @@ export default function AdminAgents() {
   };
 
   const statusBadge = (status: string) => {
-    if (status === "approved") {
-      return "badge bg-success";
-    }
-
-    if (status === "rejected") {
-      return "badge bg-danger";
-    }
-
+    if (status === "approved") return "badge bg-success";
+    if (status === "rejected") return "badge bg-danger";
     return "badge bg-warning text-dark";
   };
 
@@ -229,7 +255,7 @@ export default function AdminAgents() {
           {error}
           <button
             className="btn btn-sm btn-primary ms-3"
-            onClick={loadAgents}
+            onClick={() => void loadAgents()}
           >
             Retry
           </button>
@@ -240,9 +266,7 @@ export default function AdminAgents() {
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold mb-0">All Agents</h5>
-            <span className="badge bg-primary">
-              Total: {agents.length}
-            </span>
+            <span className="badge bg-primary">Total: {agents.length}</span>
           </div>
 
           {agents.length === 0 ? (
@@ -264,7 +288,6 @@ export default function AdminAgents() {
                     <th>Action</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {agents.map((agent) => (
                     <tr key={agent.id}>
@@ -275,7 +298,7 @@ export default function AdminAgents() {
                       <td>{agent.mobile || "-"}</td>
                       <td>{agent.trade_license || "-"}</td>
                       <td>
-                        <span className={statusBadge(agent.status)}>
+                        <span className={statusBadge(agent.status || "pending")}>
                           {agent.status || "pending"}
                         </span>
                       </td>
@@ -283,43 +306,25 @@ export default function AdminAgents() {
                         <div className="d-flex flex-wrap gap-2">
                           <button
                             className="btn btn-sm btn-success"
-                            disabled={
-                              updating === agent.id ||
-                              agent.status === "approved"
-                            }
-                            onClick={() =>
-                              updateStatus(agent.id, "approved")
-                            }
+                            disabled={updating === agent.id || agent.status === "approved"}
+                            onClick={() => updateStatus(agent.id, "approved")}
                           >
                             Approve
                           </button>
-
                           <button
                             className="btn btn-sm btn-warning"
-                            disabled={
-                              updating === agent.id ||
-                              agent.status === "pending"
-                            }
-                            onClick={() =>
-                              updateStatus(agent.id, "pending")
-                            }
+                            disabled={updating === agent.id || agent.status === "pending"}
+                            onClick={() => updateStatus(agent.id, "pending")}
                           >
                             Pending
                           </button>
-
                           <button
                             className="btn btn-sm btn-danger"
-                            disabled={
-                              updating === agent.id ||
-                              agent.status === "rejected"
-                            }
-                            onClick={() =>
-                              updateStatus(agent.id, "rejected")
-                            }
+                            disabled={updating === agent.id || agent.status === "rejected"}
+                            onClick={() => updateStatus(agent.id, "rejected")}
                           >
                             Reject
                           </button>
-
                           <button
                             className="btn btn-sm btn-primary"
                             onClick={() => {
@@ -350,10 +355,7 @@ export default function AdminAgents() {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">
-                  Reset Agent Password
-                </h5>
-
+                <h5 className="modal-title fw-bold">Reset Agent Password</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -364,17 +366,13 @@ export default function AdminAgents() {
 
               <div className="modal-body">
                 <p>
-                  Agent: <strong>{resetAgent.agency_name}</strong>
+                  Agent: <strong>{resetAgent.agency_name || "-"}</strong>
                 </p>
-
                 <p>
-                  Email: <strong>{resetAgent.email}</strong>
+                  Email: <strong>{resetAgent.email || "-"}</strong>
                 </p>
 
-                <label className="form-label fw-semibold">
-                  New Password
-                </label>
-
+                <label className="form-label fw-semibold">New Password</label>
                 <input
                   type="password"
                   className="form-control mb-3"
@@ -388,7 +386,6 @@ export default function AdminAgents() {
                 <label className="form-label fw-semibold">
                   Confirm New Password
                 </label>
-
                 <input
                   type="password"
                   className="form-control"
@@ -412,7 +409,6 @@ export default function AdminAgents() {
                 >
                   Cancel
                 </button>
-
                 <button
                   className="btn btn-primary"
                   disabled={
