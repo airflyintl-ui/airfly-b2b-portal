@@ -296,10 +296,11 @@ export default function FlightSearch() {
     itinerary: FlightItinerary | undefined,
     title: string
   ) => {
-    const flightSegments = itinerary?.segments || [];
+    if (!itinerary || !itinerary.segments?.length) {
+  return null;
+}
 
-    if (!flightSegments.length) return null;
-
+const flightSegments = itinerary.segments;
     return (
       <div className="mt-3">
         <h6 className="fw-bold mb-3">{title}</h6>
