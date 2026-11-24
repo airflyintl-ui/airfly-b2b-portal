@@ -4,10 +4,40 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "../../../services/api";
 
+type RecentBooking = {
+  id: number;
+  pnr?: string | null;
+  passenger_name?: string | null;
+  ticket_number?: string | null;
+  total_amount?: number | string | null;
+  payment_status?: string | null;
+  booking_status?: string | null;
+  created_at?: string | null;
+};
+
+type DashboardResponse = {
+  success?: boolean;
+  message?: string;
+  wallet?: number | string | null;
+  total_agents?: number;
+  total_bookings?: number;
+  confirmed_bookings?: number;
+  cancelled_bookings?: number;
+  pending_recharge?: number;
+  recent_bookings?: RecentBooking[];
+};
+
+type DashboardCard = {
+  title: string;
+  value: string | number;
+  icon: string;
+  color: string;
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
 
-  const [dashboard, setDashboard] = useState<any>(null);
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -30,13 +60,13 @@ export default function AdminDashboard() {
           cache: "no-store",
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as DashboardResponse;
 
         if (response.status === 401 || response.status === 403) {
-  localStorage.removeItem("admin_token");
-  router.replace("/admin/login");
-  return;
-}
+          localStorage.removeItem("admin_token");
+          router.replace("/admin/login");
+          return;
+        }
 
         if (!response.ok || !data.success) {
           setError(data.message || "Unable to load Admin Dashboard.");
@@ -52,7 +82,7 @@ export default function AdminDashboard() {
       }
     };
 
-    loadDashboard();
+    void loadDashboard();
   }, [router]);
 
   const handleLogout = async () => {
@@ -104,7 +134,7 @@ export default function AdminDashboard() {
 
   if (!dashboard) return null;
 
-  const cards = [
+  const cards: DashboardCard[] = [
     {
       title: "Total Wallet",
       value: `৳ ${Number(dashboard.wallet || 0).toLocaleString("en-BD")}`,
@@ -213,7 +243,7 @@ export default function AdminDashboard() {
                 </thead>
 
                 <tbody>
-                  {recentBookings.map((booking: any) => (
+                  {recentBookings.map((booking) => (
                     <tr key={booking.id}>
                       <td>{booking.id}</td>
                       <td className="fw-semibold">
@@ -231,8 +261,8 @@ export default function AdminDashboard() {
                             booking.booking_status === "Confirmed"
                               ? "badge bg-success"
                               : booking.booking_status === "Cancelled"
-                              ? "badge bg-danger"
-                              : "badge bg-warning text-dark"
+                                ? "badge bg-danger"
+                                : "badge bg-warning text-dark"
                           }
                         >
                           {booking.booking_status || "-"}
