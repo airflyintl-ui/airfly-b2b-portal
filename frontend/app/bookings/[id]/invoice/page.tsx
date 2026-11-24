@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import API from "../../../../../services/api";
+import API from "@/services/api";
 
 type Invoice = {
   pnr?: string | null;
