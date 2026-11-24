@@ -1,7 +1,12 @@
 "use client";
 
+type AirlineOption = {
+  id: number;
+  name: string;
+};
+
 type Props = {
-  airlines: any[];
+  airlines: AirlineOption[];
 
   airlineId: string;
   setAirlineId: (v: string) => void;
@@ -30,54 +35,40 @@ type Props = {
   availableSeats: string;
   setAvailableSeats: (v: string) => void;
 
-  saveFlight: (e: React.FormEvent) => void;
+  saveFlight: (e: React.FormEvent<HTMLFormElement>) => void;
 };
 
 export default function FlightForm({
   airlines,
-
   airlineId,
   setAirlineId,
-
   flightNo,
   setFlightNo,
-
   from,
   setFrom,
-
   to,
   setTo,
-
   departureTime,
   setDepartureTime,
-
   arrivalTime,
   setArrivalTime,
-
   economyFare,
   setEconomyFare,
-
   businessFare,
   setBusinessFare,
-
   availableSeats,
   setAvailableSeats,
-
   saveFlight,
 }: Props) {
   return (
     <div className="card shadow">
-
       <div className="card-header bg-primary text-white">
         Add Flight
       </div>
 
       <div className="card-body">
-
         <form onSubmit={saveFlight}>
-
           <div className="mb-3">
-
             <label>Airline</label>
 
             <select
@@ -93,13 +84,10 @@ export default function FlightForm({
                   {item.name}
                 </option>
               ))}
-
             </select>
-
           </div>
 
           <div className="mb-3">
-
             <label>Flight No</label>
 
             <input
@@ -108,13 +96,10 @@ export default function FlightForm({
               onChange={(e) => setFlightNo(e.target.value)}
               required
             />
-
           </div>
 
           <div className="row">
-
             <div className="col-6">
-
               <label>From</label>
 
               <input
@@ -123,11 +108,9 @@ export default function FlightForm({
                 onChange={(e) => setFrom(e.target.value)}
                 required
               />
-
             </div>
 
             <div className="col-6">
-
               <label>To</label>
 
               <input
@@ -136,13 +119,10 @@ export default function FlightForm({
                 onChange={(e) => setTo(e.target.value)}
                 required
               />
-
             </div>
-
           </div>
 
           <div className="mt-3">
-
             <label>Departure</label>
 
             <input
@@ -152,11 +132,9 @@ export default function FlightForm({
               onChange={(e) => setDepartureTime(e.target.value)}
               required
             />
-
           </div>
 
           <div className="mt-3">
-
             <label>Arrival</label>
 
             <input
@@ -166,13 +144,10 @@ export default function FlightForm({
               onChange={(e) => setArrivalTime(e.target.value)}
               required
             />
-
           </div>
 
           <div className="row mt-3">
-
             <div className="col-6">
-
               <label>Economy Fare</label>
 
               <input
@@ -182,11 +157,9 @@ export default function FlightForm({
                 onChange={(e) => setEconomyFare(e.target.value)}
                 required
               />
-
             </div>
 
             <div className="col-6">
-
               <label>Business Fare</label>
 
               <input
@@ -196,13 +169,10 @@ export default function FlightForm({
                 onChange={(e) => setBusinessFare(e.target.value)}
                 required
               />
-
             </div>
-
           </div>
 
           <div className="mt-3">
-
             <label>Available Seats</label>
 
             <input
@@ -212,19 +182,13 @@ export default function FlightForm({
               onChange={(e) => setAvailableSeats(e.target.value)}
               required
             />
-
           </div>
 
-          <button
-            className="btn btn-success w-100 mt-4"
-          >
+          <button className="btn btn-success w-100 mt-4">
             Save Flight
           </button>
-
         </form>
-
       </div>
-
     </div>
   );
 }
