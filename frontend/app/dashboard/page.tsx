@@ -267,7 +267,7 @@ export default function Dashboard() {
             <p className="welcome-label">AGENT DASHBOARD</p>
             <h1>Welcome, {agent.owner_name || "Agent"}!</h1>
             <p className="welcome-subtitle">
-              Here's your agency's latest activity and overview.
+              Here'syour agency&apos;s latest activity and overview.
             </p>
           </div>
 
