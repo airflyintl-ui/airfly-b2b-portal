@@ -12,11 +12,10 @@ export default function Navbar() {
     <>
       <nav className="airfly-navbar">
         <div className="container airfly-nav-container">
-
           <Link href="/" className="airfly-brand" onClick={closeMenu}>
             <span className="brand-icon">✈</span>
             <span>
-              <strong>AIRFLY INTERNATIONAL</strong>
+              <strong>AIR FLY INTERNATIONAL</strong>
               <small>B2B TRAVEL PORTAL</small>
             </span>
           </Link>
@@ -33,22 +32,10 @@ export default function Navbar() {
 
           <div className={`airfly-menu ${menuOpen ? "menu-open" : ""}`}>
             <Link href="/" onClick={closeMenu}>Home</Link>
-
-            <Link href="/#flight-search" onClick={closeMenu}>
-              Flights
-            </Link>
-
-            <Link href="/group-fare" onClick={closeMenu}>
-              Group Fare
-            </Link>
-
-            <Link href="/visa" onClick={closeMenu}>
-              Visa
-            </Link>
-
-            <Link href="/contact" onClick={closeMenu}>
-              Contact
-            </Link>
+            <Link href="/#flight-search" onClick={closeMenu}>Flights</Link>
+            <Link href="/group-fare" onClick={closeMenu}>Group Fare</Link>
+            <Link href="/visa" onClick={closeMenu}>Visa</Link>
+            <Link href="/contact" onClick={closeMenu}>Contact</Link>
 
             <Link
               href="/login"
@@ -66,8 +53,8 @@ export default function Navbar() {
           position: sticky;
           top: 0;
           z-index: 1000;
-          background: #102b50;
-          box-shadow: 0 4px 18px rgba(5, 25, 50, 0.18);
+          background: #0d6efd;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
         }
 
         .airfly-nav-container {
@@ -91,8 +78,8 @@ export default function Navbar() {
           height: 43px;
           display: grid;
           place-items: center;
-          background: #13a6a0;
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.18);
+          border-radius: 10px;
           font-size: 24px;
         }
 
@@ -109,7 +96,7 @@ export default function Navbar() {
 
         .airfly-brand small {
           margin-top: 3px;
-          color: #9bc8db;
+          color: #eaf2ff;
           font-size: 9px;
           letter-spacing: 2px;
           font-weight: 700;
@@ -122,7 +109,7 @@ export default function Navbar() {
         }
 
         .airfly-menu > a {
-          color: #e5eef8;
+          color: #ffffff;
           font-size: 14px;
           font-weight: 600;
           text-decoration: none;
@@ -130,20 +117,20 @@ export default function Navbar() {
         }
 
         .airfly-menu > a:hover {
-          color: #42d4c7;
+          color: #ffe082;
         }
 
         .airfly-menu .agent-login-btn {
-          background: #13a6a0;
-          color: white;
+          background: #ffc107;
+          color: #212529;
           padding: 11px 19px;
-          border-radius: 9px;
+          border-radius: 6px;
           font-weight: 800;
         }
 
-        .agent-login-btn:hover {
-          background: #0e8e89;
-          color: white;
+        .airfly-menu .agent-login-btn:hover {
+          background: #ffca2c;
+          color: #212529;
         }
 
         .agent-login-btn span {
@@ -153,9 +140,9 @@ export default function Navbar() {
         .airfly-toggler {
           display: none;
           background: transparent;
-          border: 1px solid #7f9db9;
+          border: 1px solid white;
           color: white;
-          border-radius: 8px;
+          border-radius: 6px;
           padding: 6px 12px;
           font-size: 23px;
           cursor: pointer;
@@ -187,7 +174,7 @@ export default function Navbar() {
 
           .airfly-menu > a {
             padding: 12px 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.09);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
           }
 
           .airfly-menu .agent-login-btn {
