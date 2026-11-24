@@ -261,21 +261,21 @@ export default function Dashboard() {
           </button>
         </header>
 
-        {/* WELCOME */}
-        <section className="welcome-section">
-          <div>
-            <p className="welcome-label">AGENT DASHBOARD</p>
-            <h1>Welcome, {agent.owner_name || "Agent"}!</h1>
-            <p className="welcome-subtitle">
-              Here'syour agency&apos;s latest activity and overview.
-            </p>
-          </div>
+       {/* WELCOME */}
+<section className="welcome-section">
+  <div>
+    <p className="welcome-label">AGENT DASHBOARD</p>
+    <h1>Welcome, {agent.owner_name || "Agent"}!</h1>
+    <p className="welcome-subtitle">
+      Here&apos;s your agency&apos;s latest activity and overview.
+    </p>
+  </div>
 
-          <div className="agency-chip">
-            <span className="online-dot" />
-            {agent.agency_name || "Your Agency"}
-          </div>
-        </section>
+  <div className="agency-chip">
+    <span className="online-dot" />
+    {agent.agency_name || "Your Agency"}
+  </div>
+</section>
 
         {/* SUMMARY CARDS */}
         <section className="summary-grid">
