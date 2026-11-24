@@ -7,6 +7,7 @@ type Airline = {
 
 export type Flight = {
   id: number;
+  airline_id?: number | string | null;
   airline?: Airline | null;
   flight_no: string;
   from: string;
