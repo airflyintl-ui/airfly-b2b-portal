@@ -370,11 +370,11 @@ export default function FlightSearch() {
         <div className="small text-muted mt-2">
           Total duration:{" "}
           <strong>
-            {formatDuration(itinerary.total_duration_seconds)}
+           formatDuration(itinerary?.total_duration_seconds ?? 0)
           </strong>
           {" · "}Stops:{" "}
           <strong>
-            {itinerary.stopovers ??
+            {itinerary?.stopovers ??
               Math.max(0, flightSegments.length - 1)}
           </strong>
         </div>
