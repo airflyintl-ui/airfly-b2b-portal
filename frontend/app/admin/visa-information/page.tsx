@@ -19,6 +19,8 @@ type VisaInformation = {
 };
 
 type VisaForm = {
+  destination_country: string;
+  custom_country: string;
   visa_type: string;
   processing_time: string;
   validity: string;
@@ -32,6 +34,8 @@ type VisaForm = {
 };
 
 const initialForm: VisaForm = {
+  destination_country: "China",
+  custom_country: "",
   visa_type: "Tourist Visa",
   processing_time: "3-7 Days",
   validity: "30 Days",
@@ -50,6 +54,20 @@ const initialForm: VisaForm = {
   terms_conditions: "",
   is_active: true,
 };
+
+const countryOptions = [
+  "China",
+  "Thailand",
+  "Malaysia",
+  "Singapore",
+  "India",
+  "United Arab Emirates",
+  "Saudi Arabia",
+  "United Kingdom",
+  "United States",
+  "Australia",
+  "Other",
+];
 
 export default function AdminVisaInformationPage() {
   const [visaList, setVisaList] = useState<VisaInformation[]>([]);
@@ -128,9 +146,20 @@ export default function AdminVisaInformationPage() {
   };
 
   const handleEdit = (visa: VisaInformation) => {
+    const knownCountry = countryOptions.includes(
+      visa.destination_country
+    );
+
     setEditingId(visa.id);
 
     setForm({
+      ...initialForm,
+      destination_country: knownCountry
+        ? visa.destination_country
+        : "Other",
+      custom_country: knownCountry
+        ? ""
+        : visa.destination_country,
       visa_type: visa.visa_type || "",
       processing_time: visa.processing_time || "",
       validity: visa.validity || "",
@@ -162,13 +191,22 @@ export default function AdminVisaInformationPage() {
     setError("");
 
     try {
+      const country =
+        form.destination_country === "Other"
+          ? form.custom_country.trim()
+          : form.destination_country.trim();
+
+      if (!country) {
+        throw new Error("Please select or enter Destination Country.");
+      }
+
       const documents = form.required_documents
         .split("\n")
         .map((item) => item.trim())
         .filter(Boolean);
 
       const payload = {
-        destination_country: "China",
+        destination_country: country,
         visa_type: form.visa_type.trim(),
         processing_time: form.processing_time.trim(),
         validity: form.validity.trim(),
@@ -205,8 +243,14 @@ export default function AdminVisaInformationPage() {
       const result = await response.json();
 
       if (!response.ok) {
+        const validationErrors = result.errors
+          ? Object.values(result.errors).flat().join(" ")
+          : "";
+
         throw new Error(
-          result.message || "Unable to save visa information."
+          validationErrors ||
+          result.message ||
+          "Unable to save visa information."
         );
       }
 
@@ -314,29 +358,25 @@ export default function AdminVisaInformationPage() {
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-primary mb-1">
-            China Visa Information
+            Visa Information Management
           </h2>
 
           <p className="text-muted mb-0">
-            Manage China Visa Types, Fees and Required Documents
+            Manage countries, visa types, fees and required documents
           </p>
         </div>
 
         <span className="badge bg-primary fs-6">
-          Destination: China
+          Multiple Destinations
         </span>
       </div>
 
       {message && (
-        <div className="alert alert-success">
-          {message}
-        </div>
+        <div className="alert alert-success">{message}</div>
       )}
 
       {error && (
-        <div className="alert alert-danger">
-          {error}
-        </div>
+        <div className="alert alert-danger">{error}</div>
       )}
 
       <div className="card shadow-sm border-0 mb-4">
@@ -352,15 +392,40 @@ export default function AdminVisaInformationPage() {
           <div className="row">
             <div className="col-md-6 mb-3">
               <label className="form-label fw-semibold">
-                Destination Country
+                Destination Country *
               </label>
 
-              <input
-                className="form-control"
-                value="China"
-                disabled
-              />
+              <select
+                className="form-select"
+                value={form.destination_country}
+                onChange={(e) =>
+                  handleChange("destination_country", e.target.value)
+                }
+              >
+                {countryOptions.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {form.destination_country === "Other" && (
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-semibold">
+                  Enter Country Name *
+                </label>
+
+                <input
+                  className="form-control"
+                  placeholder="Enter destination country"
+                  value={form.custom_country}
+                  onChange={(e) =>
+                    handleChange("custom_country", e.target.value)
+                  }
+                />
+              </div>
+            )}
 
             <div className="col-md-6 mb-3">
               <label className="form-label fw-semibold">
@@ -374,21 +439,11 @@ export default function AdminVisaInformationPage() {
                   handleChange("visa_type", e.target.value)
                 }
               >
-                <option value="Tourist Visa">
-                  Tourist Visa
-                </option>
-                <option value="Business Visa">
-                  Business Visa
-                </option>
-                <option value="Work Visa">
-                  Work Visa
-                </option>
-                <option value="Student Visa">
-                  Student Visa
-                </option>
-                <option value="Visit Visa">
-                  Visit Visa
-                </option>
+                <option value="Tourist Visa">Tourist Visa</option>
+                <option value="Business Visa">Business Visa</option>
+                <option value="Work Visa">Work Visa</option>
+                <option value="Student Visa">Student Visa</option>
+                <option value="Visit Visa">Visit Visa</option>
               </select>
             </div>
 
@@ -402,10 +457,7 @@ export default function AdminVisaInformationPage() {
                 placeholder="Example: 3-7 Days"
                 value={form.processing_time}
                 onChange={(e) =>
-                  handleChange(
-                    "processing_time",
-                    e.target.value
-                  )
+                  handleChange("processing_time", e.target.value)
                 }
               />
             </div>
@@ -490,10 +542,7 @@ export default function AdminVisaInformationPage() {
                 }
                 value={form.required_documents}
                 onChange={(e) =>
-                  handleChange(
-                    "required_documents",
-                    e.target.value
-                  )
+                  handleChange("required_documents", e.target.value)
                 }
               />
 
@@ -528,10 +577,7 @@ export default function AdminVisaInformationPage() {
                 rows={3}
                 value={form.terms_conditions}
                 onChange={(e) =>
-                  handleChange(
-                    "terms_conditions",
-                    e.target.value
-                  )
+                  handleChange("terms_conditions", e.target.value)
                 }
                 placeholder="Visa terms and conditions..."
               />
@@ -590,7 +636,7 @@ export default function AdminVisaInformationPage() {
       <div className="card shadow-sm border-0">
         <div className="card-header bg-dark text-white py-3">
           <h5 className="mb-0">
-            China Visa Information List
+            Visa Information List
           </h5>
         </div>
 
@@ -609,6 +655,7 @@ export default function AdminVisaInformationPage() {
                 <thead className="table-light">
                   <tr>
                     <th>#</th>
+                    <th>Country</th>
                     <th>Visa Type</th>
                     <th>Processing</th>
                     <th>Validity</th>
@@ -623,22 +670,17 @@ export default function AdminVisaInformationPage() {
                   {visaList.map((visa, index) => (
                     <tr key={visa.id}>
                       <td>{index + 1}</td>
-
                       <td className="fw-semibold">
-                        {visa.visa_type}
+                        {visa.destination_country}
                       </td>
-
+                      <td>{visa.visa_type}</td>
                       <td>{visa.processing_time || "-"}</td>
-
                       <td>{visa.validity || "-"}</td>
-
                       <td>{visa.entry_type || "-"}</td>
-
                       <td>
                         {visa.currency}{" "}
                         {Number(visa.visa_fee).toFixed(2)}
                       </td>
-
                       <td>
                         <span
                           className={`badge ${
@@ -647,12 +689,9 @@ export default function AdminVisaInformationPage() {
                               : "bg-secondary"
                           }`}
                         >
-                          {visa.is_active
-                            ? "Active"
-                            : "Inactive"}
+                          {visa.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
-
                       <td>
                         <div className="d-flex flex-wrap gap-1">
                           <button
@@ -670,21 +709,15 @@ export default function AdminVisaInformationPage() {
                                 ? "btn-warning"
                                 : "btn-success"
                             }`}
-                            onClick={() =>
-                              handleToggleStatus(visa)
-                            }
+                            onClick={() => handleToggleStatus(visa)}
                           >
-                            {visa.is_active
-                              ? "Deactivate"
-                              : "Activate"}
+                            {visa.is_active ? "Deactivate" : "Activate"}
                           </button>
 
                           <button
                             type="button"
                             className="btn btn-sm btn-danger"
-                            onClick={() =>
-                              handleDelete(visa.id)
-                            }
+                            onClick={() => handleDelete(visa.id)}
                           >
                             Delete
                           </button>
