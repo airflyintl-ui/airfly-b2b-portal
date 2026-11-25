@@ -27,6 +27,23 @@ type DashboardResponse = {
   recent_bookings?: RecentBooking[];
 };
 
+type GroupFareOffer = {
+  id: number;
+};
+
+type GroupFareRequest = {
+  id: number;
+  status?: string | null;
+};
+
+type GroupFareStats = {
+  totalOffers: number;
+  totalRequests: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+};
+
 type DashboardCard = {
   title: string;
   value: string | number;
@@ -38,6 +55,13 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [groupFareStats, setGroupFareStats] = useState<GroupFareStats>({
+    totalOffers: 0,
+    totalRequests: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,12 +75,14 @@ export default function AdminDashboard() {
 
     const loadDashboard = async () => {
       try {
+        const headers = {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        };
+
         const response = await fetch(`${API}/admin/dashboard`, {
           method: "GET",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
           cache: "no-store",
         });
 
@@ -74,6 +100,56 @@ export default function AdminDashboard() {
         }
 
         setDashboard(data);
+
+        // Load Group Fare Offers and Requests
+        try {
+          const [offersResponse, requestsResponse] = await Promise.all([
+            fetch(`${API}/admin/group-fares`, {
+              method: "GET",
+              headers,
+              cache: "no-store",
+            }),
+            fetch(`${API}/admin/group-fare-requests`, {
+              method: "GET",
+              headers,
+              cache: "no-store",
+            }),
+          ]);
+
+          const offersData = offersResponse.ok
+            ? await offersResponse.json()
+            : {};
+
+          const requestsData = requestsResponse.ok
+            ? await requestsResponse.json()
+            : {};
+
+          const offers: GroupFareOffer[] = Array.isArray(offersData.offers)
+            ? offersData.offers
+            : [];
+
+          const requests: GroupFareRequest[] = Array.isArray(
+            requestsData.requests
+          )
+            ? requestsData.requests
+            : [];
+
+          setGroupFareStats({
+            totalOffers: offers.length,
+            totalRequests: requests.length,
+            pending: requests.filter(
+              (item) => item.status?.toLowerCase() === "pending"
+            ).length,
+            approved: requests.filter(
+              (item) => item.status?.toLowerCase() === "approved"
+            ).length,
+            rejected: requests.filter(
+              (item) => item.status?.toLowerCase() === "rejected"
+            ).length,
+          });
+        } catch (groupFareError) {
+          console.error("Group Fare Dashboard Error:", groupFareError);
+        }
       } catch (err) {
         console.error("Admin Dashboard Error:", err);
         setError("Cannot connect to the backend. Please try again.");
@@ -175,6 +251,39 @@ export default function AdminDashboard() {
 
   const recentBookings = dashboard.recent_bookings || [];
 
+  const groupFareCards: DashboardCard[] = [
+    {
+      title: "Total Group Fare Offers",
+      value: groupFareStats.totalOffers,
+      icon: "✈️",
+      color: "primary",
+    },
+    {
+      title: "Total Group Fare Requests",
+      value: groupFareStats.totalRequests,
+      icon: "📋",
+      color: "info",
+    },
+    {
+      title: "Pending Requests",
+      value: groupFareStats.pending,
+      icon: "⏳",
+      color: "warning",
+    },
+    {
+      title: "Approved Requests",
+      value: groupFareStats.approved,
+      icon: "✅",
+      color: "success",
+    },
+    {
+      title: "Rejected Requests",
+      value: groupFareStats.rejected,
+      icon: "❌",
+      color: "danger",
+    },
+  ];
+
   return (
     <div className="container-fluid py-4">
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -185,14 +294,12 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <button
-          className="btn btn-outline-danger"
-          onClick={handleLogout}
-        >
+        <button className="btn btn-outline-danger" onClick={handleLogout}>
           Logout
         </button>
       </div>
 
+      {/* Main Dashboard Cards */}
       <div className="row g-3">
         {cards.map((card) => (
           <div className="col-xl-4 col-md-6" key={card.title}>
@@ -213,6 +320,60 @@ export default function AdminDashboard() {
         ))}
       </div>
 
+      {/* Group Fare Summary */}
+      <div className="mt-5 mb-3">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h4 className="fw-bold mb-1">Group Fare Management</h4>
+            <p className="text-muted mb-0">
+              Group Fare offers and agent booking requests overview.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-3">
+        {groupFareCards.map((card) => (
+          <div className="col-xl-4 col-md-6" key={card.title}>
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 className="text-muted mb-2">{card.title}</h6>
+                    <h3 className={`fw-bold text-${card.color} mb-0`}>
+                      {card.value}
+                    </h3>
+                  </div>
+                  <div className="fs-1">{card.icon}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Group Fare Navigation */}
+      <div className="row g-3 mt-2">
+        <div className="col-md-6">
+          <button
+            className="btn btn-outline-primary w-100 py-3"
+            onClick={() => router.push("/admin/group-fares")}
+          >
+            ✈️ Manage Group Fare Offers
+          </button>
+        </div>
+
+        <div className="col-md-6">
+          <button
+            className="btn btn-outline-success w-100 py-3"
+            onClick={() => router.push("/admin/group-fare-requests")}
+          >
+            📋 Manage Group Fare Requests
+          </button>
+        </div>
+      </div>
+
+      {/* Recent Bookings */}
       <div className="card shadow-sm border-0 mt-4">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
@@ -246,13 +407,14 @@ export default function AdminDashboard() {
                   {recentBookings.map((booking) => (
                     <tr key={booking.id}>
                       <td>{booking.id}</td>
-                      <td className="fw-semibold">
-                        {booking.pnr || "-"}
-                      </td>
+                      <td className="fw-semibold">{booking.pnr || "-"}</td>
                       <td>{booking.passenger_name || "-"}</td>
                       <td>{booking.ticket_number || "-"}</td>
                       <td>
-                        ৳ {Number(booking.total_amount || 0).toLocaleString("en-BD")}
+                        ৳{" "}
+                        {Number(booking.total_amount || 0).toLocaleString(
+                          "en-BD"
+                        )}
                       </td>
                       <td>{booking.payment_status || "-"}</td>
                       <td>
@@ -282,8 +444,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Admin Navigation */}
       <div className="row g-3 mt-3">
-        <div className="col">
+        <div className="col-md-4 col-lg">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/agents")}
@@ -292,7 +455,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="col">
+        <div className="col-md-4 col-lg">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/airlines")}
@@ -301,7 +464,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="col">
+        <div className="col-md-4 col-lg">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/flights")}
@@ -310,7 +473,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="col">
+        <div className="col-md-4 col-lg">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/bookings")}
@@ -319,7 +482,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <div className="col">
+        <div className="col-md-4 col-lg">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/recharges")}
@@ -327,7 +490,8 @@ export default function AdminDashboard() {
             💳 Recharges
           </button>
         </div>
-                <div className="col">
+
+        <div className="col-md-4 col-lg">
           <button
             className="btn btn-outline-primary w-100"
             onClick={() => router.push("/admin/group-fares")}
