@@ -30,7 +30,6 @@ type VisaRequest = {
 };
 
 type PaginationData = {
-  data?: VisaRequest[];
   current_page?: number;
   last_page?: number;
   total?: number;
@@ -39,11 +38,35 @@ type PaginationData = {
 type ApiResponse = {
   success?: boolean;
   message?: string;
-  data?: VisaRequest[] | PaginationData | VisaRequest;
+  data?: unknown;
   current_page?: number;
   last_page?: number;
   total?: number;
 };
+
+function isVisaRequest(value: unknown): value is VisaRequest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof value.id === "number"
+  );
+}
+
+function isPaginationObject(
+  value: unknown
+): value is {
+  data: unknown;
+  current_page?: number;
+  last_page?: number;
+  total?: number;
+} {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "data" in value
+  );
+}
 
 export default function AdminVisaRequestsPage() {
   const [requests, setRequests] = useState<VisaRequest[]>([]);
@@ -107,64 +130,54 @@ export default function AdminVisaRequestsPage() {
         );
       }
 
-      /*
-       * Laravel pagination can return:
-       *
-       * result.data.data
-       * result.data.current_page
-       * result.data.last_page
-       * result.data.total
-       *
-       * Some APIs may return a direct array instead.
-       */
-
       const payload = result.data;
 
       let rows: VisaRequest[] = [];
-      let pagination: PaginationData = {};
 
-      if (Array.isArray(payload)) {
-      rows = payload;
-
-      pagination = {
+      const pagination: PaginationData = {
         current_page: result.current_page,
         last_page: result.last_page,
         total: result.total,
       };
-    }
-      } else if (
-        payload &&
-        typeof payload === "object" &&
-        "data" in payload &&
-        Array.isArray(payload.data)
-      ) {
-        rows = payload.data;
-        pagination = payload;
-      } else if (
-        payload &&
-        typeof payload === "object" &&
-        "id" in payload
-      ) {
-        rows = [payload as VisaRequest];
-        pagination = result;
+
+      // Response format: data is a direct array
+      if (Array.isArray(payload)) {
+        rows = payload.filter(isVisaRequest);
+      }
+      // Response format: data contains Laravel pagination object
+      else if (isPaginationObject(payload)) {
+        if (Array.isArray(payload.data)) {
+          rows = payload.data.filter(isVisaRequest);
+        }
+
+        pagination.current_page =
+          typeof payload.current_page === "number"
+            ? payload.current_page
+            : pagination.current_page;
+
+        pagination.last_page =
+          typeof payload.last_page === "number"
+            ? payload.last_page
+            : pagination.last_page;
+
+        pagination.total =
+          typeof payload.total === "number"
+            ? payload.total
+            : pagination.total;
+      }
+      // Response format: data contains one request
+      else if (isVisaRequest(payload)) {
+        rows = [payload];
       }
 
       setRequests(rows);
 
       setLastPage(
-        Number(
-          pagination.last_page ??
-          result.last_page ??
-          1
-        )
+        Math.max(1, Number(pagination.last_page ?? 1))
       );
 
       setTotal(
-        Number(
-          pagination.total ??
-          result.total ??
-          rows.length
-        )
+        Number(pagination.total ?? rows.length)
       );
     } catch (err) {
       setRequests([]);
@@ -212,10 +225,7 @@ export default function AdminVisaRequestsPage() {
   ) => {
     if (!selectedRequest) return;
 
-    if (
-      status === "rejected" &&
-      !adminNote.trim()
-    ) {
+    if (status === "rejected" && !adminNote.trim()) {
       setError("Please enter a reason for rejection.");
       return;
     }
