@@ -489,16 +489,7 @@ export default function AdminDashboard() {
           >
             💳 Recharges
           </button>
-        </div>
-
-        <div className="col-md-4 col-lg">
-          <button
-            className="btn btn-outline-primary w-100"
-            onClick={() => router.push("/admin/group-fares")}
-          >
-            👥 Group Fare
-          </button>
-        </div>
+        </div>  
       </div>
     </div>
   );
