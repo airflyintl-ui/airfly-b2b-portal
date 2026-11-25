@@ -45,6 +45,33 @@ type DashboardResponse = {
   latest_recharges?: DashboardRecharge[];
 };
 
+type GroupFareOffer = {
+  id: number;
+};
+
+type GroupFareRequest = {
+  id: number;
+  status?: string | null;
+};
+
+type GroupFareOffersResponse = {
+  success?: boolean;
+  offers?: GroupFareOffer[];
+};
+
+type GroupFareRequestsResponse = {
+  success?: boolean;
+  requests?: GroupFareRequest[];
+};
+
+type GroupFareStats = {
+  totalOffers: number;
+  totalRequests: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+};
+
 const formatMoney = (value?: number | string | null) => {
   const amount = Number(value ?? 0);
 
@@ -108,6 +135,15 @@ export default function Dashboard() {
     useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const [groupFareStats, setGroupFareStats] =
+    useState<GroupFareStats>({
+      totalOffers: 0,
+      totalRequests: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+    });
 
   // LOGOUT
   const handleLogout = async () => {
@@ -194,6 +230,73 @@ export default function Dashboard() {
           setAgent(agentData);
           setDashboard(data);
         }
+
+        // LOAD GROUP FARE INFORMATION
+        try {
+          const headers = {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          };
+
+          const [offersResponse, requestsResponse] =
+            await Promise.all([
+              fetch(`${API}/group-fares`, {
+                method: "GET",
+                headers,
+              }),
+              fetch(`${API}/group-fare-requests`, {
+                method: "GET",
+                headers,
+              }),
+            ]);
+
+          if (
+            offersResponse.status === 401 ||
+            offersResponse.status === 403 ||
+            requestsResponse.status === 401 ||
+            requestsResponse.status === 403
+          ) {
+            throw new Error("Unable to load Group Fare information");
+          }
+
+          const offersData =
+            offersResponse.ok
+              ? (await offersResponse.json()) as GroupFareOffersResponse
+              : {};
+
+          const requestsData =
+            requestsResponse.ok
+              ? (await requestsResponse.json()) as GroupFareRequestsResponse
+              : {};
+
+          const offers = Array.isArray(offersData.offers)
+            ? offersData.offers
+            : [];
+
+          const requests = Array.isArray(requestsData.requests)
+            ? requestsData.requests
+            : [];
+
+          const stats: GroupFareStats = {
+            totalOffers: offers.length,
+            totalRequests: requests.length,
+            pending: requests.filter(
+              (item) => (item.status || "").toLowerCase() === "pending"
+            ).length,
+            approved: requests.filter(
+              (item) => (item.status || "").toLowerCase() === "approved"
+            ).length,
+            rejected: requests.filter(
+              (item) => (item.status || "").toLowerCase() === "rejected"
+            ).length,
+          };
+
+          if (isMounted) {
+            setGroupFareStats(stats);
+          }
+        } catch (groupFareError) {
+          console.error("Agent Group Fare Error:", groupFareError);
+        }
       } catch (error) {
         console.error("Dashboard Error:", error);
 
@@ -261,21 +364,21 @@ export default function Dashboard() {
           </button>
         </header>
 
-       {/* WELCOME */}
-<section className="welcome-section">
-  <div>
-    <p className="welcome-label">AGENT DASHBOARD</p>
-    <h1>Welcome, {agent.owner_name || "Agent"}!</h1>
-    <p className="welcome-subtitle">
-      Here&apos;s your agency&apos;s latest activity and overview.
-    </p>
-  </div>
+        {/* WELCOME */}
+        <section className="welcome-section">
+          <div>
+            <p className="welcome-label">AGENT DASHBOARD</p>
+            <h1>Welcome, {agent.owner_name || "Agent"}!</h1>
+            <p className="welcome-subtitle">
+              Here&apos;s your agency&apos;s latest activity and overview.
+            </p>
+          </div>
 
-  <div className="agency-chip">
-    <span className="online-dot" />
-    {agent.agency_name || "Your Agency"}
-  </div>
-</section>
+          <div className="agency-chip">
+            <span className="online-dot" />
+            {agent.agency_name || "Your Agency"}
+          </div>
+        </section>
 
         {/* SUMMARY CARDS */}
         <section className="summary-grid">
@@ -316,6 +419,84 @@ export default function Dashboard() {
             <p>Successfully approved</p>
           </div>
 
+        </section>
+
+        {/* GROUP FARE SUMMARY */}
+        <section className="dashboard-panel group-fare-panel">
+          <div className="section-heading">
+            <div>
+              <h3>Group Fare Summary</h3>
+              <p>Your group fare offers and request overview</p>
+            </div>
+            <span className="group-fare-label">GROUP FARE</span>
+          </div>
+
+          <div className="summary-grid group-fare-grid">
+
+            <div className="summary-card group-offer-card">
+              <div className="summary-top">
+                <span>Available Offers</span>
+                <div className="summary-icon">✈</div>
+              </div>
+              <h2>{groupFareStats.totalOffers}</h2>
+              <p>Published group fare offers</p>
+            </div>
+
+            <div className="summary-card group-request-card">
+              <div className="summary-top">
+                <span>My Requests</span>
+                <div className="summary-icon">▣</div>
+              </div>
+              <h2>{groupFareStats.totalRequests}</h2>
+              <p>Total submitted requests</p>
+            </div>
+
+            <div className="summary-card group-pending-card">
+              <div className="summary-top">
+                <span>Pending Requests</span>
+                <div className="summary-icon">◷</div>
+              </div>
+              <h2>{groupFareStats.pending}</h2>
+              <p>Awaiting admin approval</p>
+            </div>
+
+            <div className="summary-card group-approved-card">
+              <div className="summary-top">
+                <span>Approved Requests</span>
+                <div className="summary-icon">✓</div>
+              </div>
+              <h2>{groupFareStats.approved}</h2>
+              <p>Successfully approved</p>
+            </div>
+
+            <div className="summary-card group-rejected-card">
+              <div className="summary-top">
+                <span>Rejected Requests</span>
+                <div className="summary-icon">✕</div>
+              </div>
+              <h2>{groupFareStats.rejected}</h2>
+              <p>Requests not approved</p>
+            </div>
+
+          </div>
+
+          <div className="group-fare-actions">
+            <button
+              className="group-fare-button offers-button"
+              onClick={() => router.push("/group-fare")}
+            >
+              ✈ View Group Fare Offers
+              <span>→</span>
+            </button>
+
+            <button
+              className="group-fare-button requests-button"
+              onClick={() => router.push("/agent/group-fare")}
+            >
+              ▣ My Group Fare Requests
+              <span>→</span>
+            </button>
+          </div>
         </section>
 
         {/* QUICK ACTIONS */}
@@ -753,6 +934,128 @@ export default function Dashboard() {
           color: #755bd6;
         }
 
+        /* GROUP FARE DESIGN */
+        .group-fare-panel {
+          border-top: 4px solid #1596d0;
+        }
+
+        .group-fare-label {
+          display: inline-block;
+          padding: 7px 12px;
+          border-radius: 30px;
+          background: #eaf4ff;
+          color: #1476bd;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 1px;
+          white-space: nowrap;
+        }
+
+        .group-fare-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .group-fare-grid .summary-card {
+          padding: 16px;
+        }
+
+        .group-fare-grid .summary-top {
+          font-size: 11px;
+        }
+
+        .group-fare-grid .summary-icon {
+          width: 33px;
+          height: 33px;
+          font-size: 17px;
+        }
+
+        .group-fare-grid .summary-card h2 {
+          font-size: 25px;
+        }
+
+        .group-offer-card {
+          border-top: 4px solid #2588d8;
+        }
+
+        .group-request-card {
+          border-top: 4px solid #755bd6;
+        }
+
+        .group-request-card .summary-icon {
+          background: #f0edff;
+          color: #755bd6;
+        }
+
+        .group-pending-card {
+          border-top: 4px solid #e8a52e;
+        }
+
+        .group-pending-card .summary-icon {
+          background: #fff5df;
+          color: #d99519;
+        }
+
+        .group-approved-card {
+          border-top: 4px solid #17a875;
+        }
+
+        .group-approved-card .summary-icon {
+          background: #e6f8f0;
+          color: #159b6b;
+        }
+
+        .group-rejected-card {
+          border-top: 4px solid #d83a48;
+        }
+
+        .group-rejected-card .summary-icon {
+          background: #fff1f1;
+          color: #d83a48;
+        }
+
+        .group-fare-actions {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 13px;
+          margin-top: 20px;
+        }
+
+        .group-fare-button {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          padding: 14px 17px;
+          border-radius: 10px;
+          border: 1px solid transparent;
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .group-fare-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 15px rgba(20, 45, 80, 0.09);
+        }
+
+        .group-fare-button span {
+          font-size: 20px;
+        }
+
+        .offers-button {
+          background: #eaf4ff;
+          border-color: #d7eaff;
+          color: #1476bd;
+        }
+
+        .requests-button {
+          background: #e9f8f2;
+          border-color: #d5f0e4;
+          color: #159b6b;
+        }
+
         .dashboard-panel {
           margin-top: 23px;
           padding: 23px;
@@ -1031,8 +1334,18 @@ export default function Dashboard() {
           }
         }
 
+        @media (max-width: 1100px) {
+          .group-fare-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+
         @media (max-width: 900px) {
           .summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .group-fare-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
@@ -1112,6 +1425,37 @@ export default function Dashboard() {
 
           .quick-actions {
             grid-template-columns: 1fr;
+          }
+
+          .group-fare-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .group-fare-grid .summary-card {
+            padding: 12px;
+          }
+
+          .group-fare-grid .summary-top {
+            font-size: 10px;
+          }
+
+          .group-fare-grid .summary-card h2 {
+            font-size: 20px;
+          }
+
+          .group-fare-actions {
+            grid-template-columns: 1fr;
+          }
+
+          .group-fare-button {
+            padding: 12px;
+            font-size: 12px;
+          }
+
+          .group-fare-label {
+            font-size: 9px;
+            padding: 6px 8px;
           }
 
           .agency-details {
