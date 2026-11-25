@@ -51,10 +51,99 @@ type DashboardCard = {
   color: string;
 };
 
+type AdminMenuItem = {
+  title: string;
+  description: string;
+  icon: string;
+  path: string;
+  color: string;
+};
+
+const adminMenu: AdminMenuItem[] = [
+  {
+    title: "Agent Management",
+    description: "Manage agents and agency accounts",
+    icon: "👥",
+    path: "/admin/agents",
+    color: "primary",
+  },
+  {
+    title: "Airline Management",
+    description: "Manage airline information",
+    icon: "✈️",
+    path: "/admin/airlines",
+    color: "primary",
+  },
+  {
+    title: "Flight Management",
+    description: "Add, edit and manage flights",
+    icon: "🛫",
+    path: "/admin/flights",
+    color: "info",
+  },
+  {
+    title: "Booking Management",
+    description: "View and manage agent bookings",
+    icon: "📋",
+    path: "/admin/bookings",
+    color: "info",
+  },
+  {
+    title: "Wallet Management",
+    description: "Manage agent wallet balances",
+    icon: "💰",
+    path: "/admin/wallets",
+    color: "success",
+  },
+  {
+    title: "Recharge Management",
+    description: "Approve or reject recharge requests",
+    icon: "💳",
+    path: "/admin/recharges",
+    color: "warning",
+  },
+  {
+    title: "Group Fare Offers",
+    description: "Create and manage group fare offers",
+    icon: "🎫",
+    path: "/admin/group-fares",
+    color: "primary",
+  },
+  {
+    title: "Group Fare Requests",
+    description: "Review agent group fare requests",
+    icon: "📑",
+    path: "/admin/group-fare-requests",
+    color: "success",
+  },
+  {
+    title: "Home Page Poster Control",
+    description: "Upload, edit and manage homepage posters",
+    icon: "🖼️",
+    path: "/admin/homepage-posters",
+    color: "info",
+  },
+  {
+    title: "Visa Information",
+    description: "Manage destination countries, visa types and fees",
+    icon: "🌍",
+    path: "/admin/visa-information",
+    color: "primary",
+  },
+  {
+    title: "Visa Requests",
+    description: "Review and manage agent visa applications",
+    icon: "🛂",
+    path: "/admin/visa-requests",
+    color: "success",
+  },
+];
+
 export default function AdminDashboard() {
   const router = useRouter();
 
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+
   const [groupFareStats, setGroupFareStats] = useState<GroupFareStats>({
     totalOffers: 0,
     totalRequests: 0,
@@ -62,6 +151,7 @@ export default function AdminDashboard() {
     approved: 0,
     rejected: 0,
   });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -101,7 +191,6 @@ export default function AdminDashboard() {
 
         setDashboard(data);
 
-        // Load Group Fare Offers and Requests
         try {
           const [offersResponse, requestsResponse] = await Promise.all([
             fetch(`${API}/admin/group-fares`, {
@@ -286,6 +375,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="container-fluid py-4">
+      {/* Header */}
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
           <h2 className="fw-bold mb-1">Admin Dashboard</h2>
@@ -322,14 +412,10 @@ export default function AdminDashboard() {
 
       {/* Group Fare Summary */}
       <div className="mt-5 mb-3">
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <div>
-            <h4 className="fw-bold mb-1">Group Fare Management</h4>
-            <p className="text-muted mb-0">
-              Group Fare offers and agent booking requests overview.
-            </p>
-          </div>
-        </div>
+        <h4 className="fw-bold mb-1">Group Fare Management</h4>
+        <p className="text-muted mb-0">
+          Group Fare offers and agent booking requests overview.
+        </p>
       </div>
 
       <div className="row g-3">
@@ -432,7 +518,9 @@ export default function AdminDashboard() {
                       </td>
                       <td>
                         {booking.created_at
-                          ? new Date(booking.created_at).toLocaleDateString()
+                          ? new Date(
+                              booking.created_at
+                            ).toLocaleDateString()
                           : "-"}
                       </td>
                     </tr>
@@ -444,52 +532,43 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Admin Navigation */}
-      <div className="row g-3 mt-3">
-        <div className="col-md-4 col-lg">
-          <button
-            className="btn btn-outline-primary w-100"
-            onClick={() => router.push("/admin/agents")}
-          >
-            👥 Agents
-          </button>
-        </div>
+      {/* Admin Management Center */}
+      <div className="mt-5 mb-3">
+        <h4 className="fw-bold mb-1">Admin Management Center</h4>
+        <p className="text-muted mb-0">
+          Access all Air Fly International management sections from here.
+        </p>
+      </div>
 
-        <div className="col-md-4 col-lg">
-          <button
-            className="btn btn-outline-primary w-100"
-            onClick={() => router.push("/admin/airlines")}
-          >
-            ✈️ Airlines
-          </button>
-        </div>
+      <div className="row g-3">
+        {adminMenu.map((item) => (
+          <div className="col-xl-4 col-md-6" key={item.path}>
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body d-flex flex-column">
+                <div className="d-flex align-items-center gap-3 mb-3">
+                  <div className="fs-2">{item.icon}</div>
+                  <div>
+                    <h6 className="fw-bold mb-1">{item.title}</h6>
+                    <p className="text-muted small mb-0">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
 
-        <div className="col-md-4 col-lg">
-          <button
-            className="btn btn-outline-primary w-100"
-            onClick={() => router.push("/admin/flights")}
-          >
-            🛫 Flights
-          </button>
-        </div>
+                <button
+                  className={`btn btn-outline-${item.color} w-100 mt-auto`}
+                  onClick={() => router.push(item.path)}
+                >
+                  Open {item.title}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
-        <div className="col-md-4 col-lg">
-          <button
-            className="btn btn-outline-primary w-100"
-            onClick={() => router.push("/admin/bookings")}
-          >
-            📋 Bookings
-          </button>
-        </div>
-
-        <div className="col-md-4 col-lg">
-          <button
-            className="btn btn-outline-primary w-100"
-            onClick={() => router.push("/admin/recharges")}
-          >
-            💳 Recharges
-          </button>
-        </div>  
+      <div className="text-center text-muted small mt-4">
+        AIR FLY INTERNATIONAL - Admin Management Portal
       </div>
     </div>
   );
