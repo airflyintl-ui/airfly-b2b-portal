@@ -29,10 +29,17 @@ type VisaRequest = {
   created_at: string;
 };
 
+type PaginationData = {
+  data?: VisaRequest[];
+  current_page?: number;
+  last_page?: number;
+  total?: number;
+};
+
 type ApiResponse = {
   success?: boolean;
   message?: string;
-  data?: VisaRequest[] | VisaRequest;
+  data?: VisaRequest[] | PaginationData | VisaRequest;
   current_page?: number;
   last_page?: number;
   total?: number;
@@ -100,28 +107,64 @@ export default function AdminVisaRequestsPage() {
         );
       }
 
-      const pagination = result.data as
-        | VisaRequest[]
-        | undefined;
+      /*
+       * Laravel pagination can return:
+       *
+       * result.data.data
+       * result.data.current_page
+       * result.data.last_page
+       * result.data.total
+       *
+       * Some APIs may return a direct array instead.
+       */
 
-      setRequests(Array.isArray(pagination) ? pagination : []);
+      const payload = result.data;
 
-      const paginationResult = result as ApiResponse & {
-        data?: VisaRequest[] & {
-          current_page?: number;
-          last_page?: number;
-          total?: number;
-        };
-      };
+      let rows: VisaRequest[] = [];
+      let pagination: PaginationData = {};
+
+      if (Array.isArray(payload)) {
+        rows = payload;
+        pagination = result;
+      } else if (
+        payload &&
+        typeof payload === "object" &&
+        "data" in payload &&
+        Array.isArray(payload.data)
+      ) {
+        rows = payload.data;
+        pagination = payload;
+      } else if (
+        payload &&
+        typeof payload === "object" &&
+        "id" in payload
+      ) {
+        rows = [payload as VisaRequest];
+        pagination = result;
+      }
+
+      setRequests(rows);
 
       setLastPage(
-        paginationResult.data?.last_page || 1
+        Number(
+          pagination.last_page ??
+          result.last_page ??
+          1
+        )
       );
 
       setTotal(
-        paginationResult.data?.total || 0
+        Number(
+          pagination.total ??
+          result.total ??
+          rows.length
+        )
       );
     } catch (err) {
+      setRequests([]);
+      setTotal(0);
+      setLastPage(1);
+
       setError(
         err instanceof Error
           ? err.message
@@ -140,12 +183,22 @@ export default function AdminVisaRequestsPage() {
     setPage(1);
     setMessage("");
     setError("");
-    void loadRequests();
+  };
+
+  const handleReset = () => {
+    setSearch("");
+    setStatusFilter("pending");
+    setPage(1);
+    setSelectedRequest(null);
+    setAdminNote("");
+    setMessage("");
+    setError("");
   };
 
   const handleView = (request: VisaRequest) => {
     setSelectedRequest(request);
     setAdminNote(request.admin_note || "");
+    setError("");
   };
 
   const handleReview = async (
@@ -218,13 +271,32 @@ export default function AdminVisaRequestsPage() {
   const formatDate = (date: string) => {
     if (!date) return "-";
 
-    return new Date(date).toLocaleString("en-GB", {
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const formatFee = (
+    fee: string | number,
+    currency: string
+  ) => {
+    const amount = Number(fee);
+
+    if (!Number.isFinite(amount)) {
+      return `${currency} 0.00`;
+    }
+
+    return `${currency} ${amount.toFixed(2)}`;
   };
 
   const statusBadge = (status: string) => {
@@ -253,7 +325,7 @@ export default function AdminVisaRequestsPage() {
         </div>
 
         <span className="badge bg-primary fs-6">
-          China Visa
+          All Destinations
         </span>
       </div>
 
@@ -325,12 +397,7 @@ export default function AdminVisaRequestsPage() {
               <button
                 type="button"
                 className="btn btn-outline-secondary w-100"
-                onClick={() => {
-                  setSearch("");
-                  setStatusFilter("pending");
-                  setPage(1);
-                  setSelectedRequest(null);
-                }}
+                onClick={handleReset}
               >
                 Reset Filters
               </button>
@@ -346,6 +413,7 @@ export default function AdminVisaRequestsPage() {
               <div className="text-muted">
                 Total Matching Requests
               </div>
+
               <h3 className="fw-bold mb-0">{total}</h3>
             </div>
           </div>
@@ -357,6 +425,7 @@ export default function AdminVisaRequestsPage() {
               <div className="text-muted">
                 Current Page
               </div>
+
               <h3 className="fw-bold mb-0">{page}</h3>
             </div>
           </div>
@@ -368,6 +437,7 @@ export default function AdminVisaRequestsPage() {
               <div className="text-muted">
                 Total Pages
               </div>
+
               <h3 className="fw-bold mb-0">{lastPage}</h3>
             </div>
           </div>
@@ -406,6 +476,7 @@ export default function AdminVisaRequestsPage() {
                   <tr>
                     <th>ID</th>
                     <th>Passenger</th>
+                    <th>Destination</th>
                     <th>Passport</th>
                     <th>Visa Type</th>
                     <th>Mobile</th>
@@ -425,15 +496,27 @@ export default function AdminVisaRequestsPage() {
                         {request.passenger_name}
                       </td>
 
-                      <td>{request.passport_number}</td>
-
-                      <td>{request.visa_type}</td>
-
-                      <td>{request.mobile}</td>
+                      <td>
+                        {request.destination_country || "-"}
+                      </td>
 
                       <td>
-                        {request.currency}{" "}
-                        {Number(request.visa_fee).toFixed(2)}
+                        {request.passport_number || "-"}
+                      </td>
+
+                      <td>
+                        {request.visa_type || "-"}
+                      </td>
+
+                      <td>
+                        {request.mobile || "-"}
+                      </td>
+
+                      <td>
+                        {formatFee(
+                          request.visa_fee,
+                          request.currency
+                        )}
                       </td>
 
                       <td>
@@ -471,7 +554,9 @@ export default function AdminVisaRequestsPage() {
               type="button"
               className="btn btn-outline-primary"
               disabled={page <= 1 || loading}
-              onClick={() => setPage((previous) => previous - 1)}
+              onClick={() =>
+                setPage((previous) => previous - 1)
+              }
             >
               Previous
             </button>
@@ -484,7 +569,9 @@ export default function AdminVisaRequestsPage() {
               type="button"
               className="btn btn-outline-primary"
               disabled={page >= lastPage || loading}
-              onClick={() => setPage((previous) => previous + 1)}
+              onClick={() =>
+                setPage((previous) => previous + 1)
+              }
             >
               Next
             </button>
@@ -523,39 +610,53 @@ export default function AdminVisaRequestsPage() {
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
                     <strong>Passenger Name</strong>
-                    <div>{selectedRequest.passenger_name}</div>
+                    <div>
+                      {selectedRequest.passenger_name || "-"}
+                    </div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Passport Number</strong>
-                    <div>{selectedRequest.passport_number}</div>
+                    <div>
+                      {selectedRequest.passport_number || "-"}
+                    </div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Email</strong>
-                    <div>{selectedRequest.email}</div>
+                    <div>
+                      {selectedRequest.email || "-"}
+                    </div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Mobile</strong>
-                    <div>{selectedRequest.mobile}</div>
+                    <div>
+                      {selectedRequest.mobile || "-"}
+                    </div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Destination</strong>
-                    <div>{selectedRequest.destination_country}</div>
+                    <div>
+                      {selectedRequest.destination_country || "-"}
+                    </div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Visa Type</strong>
-                    <div>{selectedRequest.visa_type}</div>
+                    <div>
+                      {selectedRequest.visa_type || "-"}
+                    </div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Visa Fee</strong>
                     <div>
-                      {selectedRequest.currency}{" "}
-                      {Number(selectedRequest.visa_fee).toFixed(2)}
+                      {formatFee(
+                        selectedRequest.visa_fee,
+                        selectedRequest.currency
+                      )}
                     </div>
                   </div>
 
@@ -647,12 +748,15 @@ export default function AdminVisaRequestsPage() {
                   <div className="alert alert-info">
                     This request has already been reviewed.
                     <br />
+
                     <strong>Status:</strong>{" "}
                     {selectedRequest.status.toUpperCase()}
                     <br />
+
                     <strong>Admin Note:</strong>{" "}
                     {selectedRequest.admin_note || "No note"}
                     <br />
+
                     <strong>Reviewed At:</strong>{" "}
                     {selectedRequest.reviewed_at
                       ? formatDate(selectedRequest.reviewed_at)
@@ -676,7 +780,9 @@ export default function AdminVisaRequestsPage() {
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => void handleReview("rejected")}
+                      onClick={() =>
+                        void handleReview("rejected")
+                      }
                       disabled={updatingId !== null}
                     >
                       {updatingId === selectedRequest.id
@@ -687,7 +793,9 @@ export default function AdminVisaRequestsPage() {
                     <button
                       type="button"
                       className="btn btn-success"
-                      onClick={() => void handleReview("approved")}
+                      onClick={() =>
+                        void handleReview("approved")
+                      }
                       disabled={updatingId !== null}
                     >
                       {updatingId === selectedRequest.id
