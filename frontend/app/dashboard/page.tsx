@@ -72,6 +72,23 @@ type GroupFareStats = {
   rejected: number;
 };
 
+type VisaRequest = {
+  id: number;
+  status?: string | null;
+};
+
+type VisaStats = {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+};
+
+type VisaRequestsResponse = {
+  data?: unknown;
+  requests?: unknown;
+};
+
 const formatMoney = (value?: number | string | null) => {
   const amount = Number(value ?? 0);
 
@@ -144,6 +161,13 @@ export default function Dashboard() {
       approved: 0,
       rejected: 0,
     });
+
+  const [visaStats, setVisaStats] = useState<VisaStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
 
   // LOGOUT
   const handleLogout = async () => {
@@ -296,6 +320,71 @@ export default function Dashboard() {
           }
         } catch (groupFareError) {
           console.error("Agent Group Fare Error:", groupFareError);
+        }
+
+        // LOAD AGENT VISA REQUESTS
+        try {
+          const visaResponse = await fetch(`${API}/visa-requests`, {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          });
+
+          if (!visaResponse.ok) {
+            throw new Error("Unable to load Visa Requests");
+          }
+
+          const visaData =
+            (await visaResponse.json()) as VisaRequestsResponse;
+
+          let visaRequests: VisaRequest[] = [];
+          let paginatedTotal: number | null = null;
+
+          if (Array.isArray(visaData.requests)) {
+            visaRequests = visaData.requests as VisaRequest[];
+          } else if (Array.isArray(visaData.data)) {
+            visaRequests = visaData.data as VisaRequest[];
+          } else if (
+            typeof visaData.data === "object" &&
+            visaData.data !== null &&
+            "data" in visaData.data
+          ) {
+            const pagination = visaData.data as {
+              data?: unknown;
+              total?: unknown;
+            };
+
+            if (Array.isArray(pagination.data)) {
+              visaRequests = pagination.data as VisaRequest[];
+            }
+
+            const total = Number(pagination.total);
+            if (Number.isFinite(total) && total >= 0) {
+              paginatedTotal = total;
+            }
+          }
+
+          const stats: VisaStats = {
+            total: paginatedTotal ?? visaRequests.length,
+            pending: visaRequests.filter(
+              (item) => (item.status || "").toLowerCase() === "pending"
+            ).length,
+            approved: visaRequests.filter(
+              (item) => (item.status || "").toLowerCase() === "approved"
+            ).length,
+            rejected: visaRequests.filter(
+              (item) => (item.status || "").toLowerCase() === "rejected"
+            ).length,
+          };
+
+          if (isMounted) {
+            setVisaStats(stats);
+          }
+        } catch (visaError) {
+          console.error("Agent Visa Requests Error:", visaError);
         }
       } catch (error) {
         console.error("Dashboard Error:", error);
@@ -494,6 +583,73 @@ export default function Dashboard() {
               onClick={() => router.push("/agent/group-fare")}
             >
               ▣ My Group Fare Requests
+              <span>→</span>
+            </button>
+          </div>
+        </section>
+
+        {/* VISA SUMMARY */}
+        <section className="dashboard-panel visa-panel">
+          <div className="section-heading">
+            <div>
+              <h3>Visa Summary</h3>
+              <p>Your visa applications and request overview</p>
+            </div>
+            <span className="visa-label">VISA SERVICES</span>
+          </div>
+
+          <div className="summary-grid visa-grid">
+            <div className="summary-card visa-total-card">
+              <div className="summary-top">
+                <span>Total Visa Requests</span>
+                <div className="summary-icon">▣</div>
+              </div>
+              <h2>{visaStats.total}</h2>
+              <p>Your submitted applications</p>
+            </div>
+
+            <div className="summary-card visa-pending-card">
+              <div className="summary-top">
+                <span>Pending Requests</span>
+                <div className="summary-icon">◷</div>
+              </div>
+              <h2>{visaStats.pending}</h2>
+              <p>Awaiting admin review</p>
+            </div>
+
+            <div className="summary-card visa-approved-card">
+              <div className="summary-top">
+                <span>Approved Requests</span>
+                <div className="summary-icon">✓</div>
+              </div>
+              <h2>{visaStats.approved}</h2>
+              <p>Successfully approved</p>
+            </div>
+
+            <div className="summary-card visa-rejected-card">
+              <div className="summary-top">
+                <span>Rejected Requests</span>
+                <div className="summary-icon">✕</div>
+              </div>
+              <h2>{visaStats.rejected}</h2>
+              <p>Requests not approved</p>
+            </div>
+          </div>
+
+          <div className="group-fare-actions">
+            <button
+              className="group-fare-button offers-button"
+              onClick={() => router.push("/visa")}
+            >
+              ＋ Apply for Visa
+              <span>→</span>
+            </button>
+
+            <button
+              className="group-fare-button requests-button"
+              onClick={() => router.push("/visa/my-requests")}
+            >
+              ▣ My Visa Requests
               <span>→</span>
             </button>
           </div>
@@ -951,6 +1107,58 @@ export default function Dashboard() {
           white-space: nowrap;
         }
 
+        /* VISA SUMMARY DESIGN */
+        .visa-panel {
+          border-top: 4px solid #755bd6;
+        }
+
+        .visa-label {
+          display: inline-block;
+          padding: 7px 12px;
+          border-radius: 30px;
+          background: #f0edff;
+          color: #755bd6;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 1px;
+          white-space: nowrap;
+        }
+
+        .visa-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .visa-total-card {
+          border-top: 4px solid #2588d8;
+        }
+
+        .visa-pending-card {
+          border-top: 4px solid #e8a52e;
+        }
+
+        .visa-pending-card .summary-icon {
+          background: #fff5df;
+          color: #d99519;
+        }
+
+        .visa-approved-card {
+          border-top: 4px solid #17a875;
+        }
+
+        .visa-approved-card .summary-icon {
+          background: #e6f8f0;
+          color: #159b6b;
+        }
+
+        .visa-rejected-card {
+          border-top: 4px solid #d83a48;
+        }
+
+        .visa-rejected-card .summary-icon {
+          background: #fff1f1;
+          color: #d83a48;
+        }
+
         .group-fare-grid {
           grid-template-columns: repeat(5, minmax(0, 1fr));
           gap: 12px;
@@ -1338,6 +1546,10 @@ export default function Dashboard() {
           .group-fare-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
           }
+
+          .visa-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 900px) {
@@ -1428,6 +1640,11 @@ export default function Dashboard() {
           }
 
           .group-fare-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .visa-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
           }
