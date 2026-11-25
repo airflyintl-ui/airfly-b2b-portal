@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import API from "../../services/api";
 
 type VisaInformation = {
@@ -28,9 +29,8 @@ type VisaRequestResponse = {
 };
 
 export default function VisaPage() {
-  const [visaInformation, setVisaInformation] =
-    useState<VisaInformation[]>([]);
-
+  const [visaInformation, setVisaInformation] = useState<VisaInformation[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedVisaId, setSelectedVisaId] = useState("");
 
   const [passengerName, setPassengerName] = useState("");
@@ -38,18 +38,38 @@ export default function VisaPage() {
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [remarks, setRemarks] = useState("");
-
   const [documents, setDocuments] = useState<File[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [submittedRequestId, setSubmittedRequestId] =
-    useState<number | null>(null);
+  const [submittedRequestId, setSubmittedRequestId] = useState<number | null>(null);
 
-  const selectedVisa = visaInformation.find(
+  const countries = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          visaInformation
+            .filter((visa) => visa.is_active)
+            .map((visa) => visa.destination_country)
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [visaInformation]
+  );
+
+  const countryVisas = useMemo(
+    () =>
+      visaInformation.filter(
+        (visa) =>
+          visa.is_active &&
+          visa.destination_country === selectedCountry
+      ),
+    [visaInformation, selectedCountry]
+  );
+
+  const selectedVisa = countryVisas.find(
     (visa) => String(visa.id) === selectedVisaId
   );
 
@@ -58,16 +78,13 @@ export default function VisaPage() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API}/public/visa-information`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-          cache: "no-store",
-        }
-      );
+      const response = await fetch(`${API}/public/visa-information`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      });
 
       const result = await response.json();
 
@@ -83,10 +100,22 @@ export default function VisaPage() {
           ? [result.data as VisaInformation]
           : [];
 
-      setVisaInformation(list);
+      const activeList = list.filter((visa) => visa.is_active);
 
-      if (list.length > 0) {
-        setSelectedVisaId(String(list[0].id));
+      setVisaInformation(activeList);
+
+      if (activeList.length > 0) {
+        const firstCountry = activeList[0].destination_country;
+        setSelectedCountry(firstCountry);
+
+        const firstVisa = activeList.find(
+          (visa) => visa.destination_country === firstCountry
+        );
+
+        setSelectedVisaId(firstVisa ? String(firstVisa.id) : "");
+      } else {
+        setSelectedCountry("");
+        setSelectedVisaId("");
       }
     } catch (err) {
       setError(
@@ -103,13 +132,27 @@ export default function VisaPage() {
     void loadVisaInformation();
   }, [loadVisaInformation]);
 
+  const handleCountryChange = (country: string) => {
+    setSelectedCountry(country);
+
+    const firstVisa = visaInformation.find(
+      (visa) =>
+        visa.is_active && visa.destination_country === country
+    );
+
+    setSelectedVisaId(firstVisa ? String(firstVisa.id) : "");
+    setError("");
+    setMessage("");
+  };
+
   const handleDocumentChange = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>
   ) => {
     const files = Array.from(event.target.files || []);
 
     if (files.length > 10) {
       setError("You can upload a maximum of 10 documents.");
+      setDocuments([]);
       event.target.value = "";
       return;
     }
@@ -123,17 +166,15 @@ export default function VisaPage() {
 
     for (const file of files) {
       if (!allowedTypes.includes(file.type)) {
-        setError(
-          "Only PDF, JPG, JPEG and PNG files are allowed."
-        );
+        setError("Only PDF, JPG, JPEG and PNG files are allowed.");
+        setDocuments([]);
         event.target.value = "";
         return;
       }
 
       if (file.size > 5 * 1024 * 1024) {
-        setError(
-          "Each document must be 5 MB or smaller."
-        );
+        setError("Each document must be 5 MB or smaller.");
+        setDocuments([]);
         event.target.value = "";
         return;
       }
@@ -143,14 +184,17 @@ export default function VisaPage() {
     setDocuments(files);
   };
 
-  const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setError("");
     setMessage("");
     setSubmittedRequestId(null);
+
+    if (!selectedCountry) {
+      setError("Please select a Destination Country.");
+      return;
+    }
 
     if (!selectedVisa) {
       setError("Please select a Visa Type.");
@@ -186,11 +230,7 @@ export default function VisaPage() {
 
       const formData = new FormData();
 
-      formData.append(
-        "visa_information_id",
-        String(selectedVisa.id)
-      );
-
+      formData.append("visa_information_id", String(selectedVisa.id));
       formData.append("passenger_name", passengerName.trim());
       formData.append("passport_number", passportNumber.trim());
       formData.append("email", email.trim());
@@ -201,20 +241,16 @@ export default function VisaPage() {
         formData.append("documents[]", file);
       });
 
-      const response = await fetch(
-        `${API}/visa-requests`,
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
+      const response = await fetch(`${API}/visa-requests`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-      const result =
-        (await response.json()) as VisaRequestResponse;
+      const result = (await response.json()) as VisaRequestResponse;
 
       if (!response.ok) {
         throw new Error(
@@ -258,11 +294,11 @@ export default function VisaPage() {
       <div className="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
           <h2 className="mb-2 fw-bold text-primary">
-            China Visa Application
+            Visa Application
           </h2>
 
           <p className="text-muted mb-0">
-            Submit your passenger information and required documents.
+            Select your destination country and submit passenger information and required documents.
           </p>
         </div>
 
@@ -273,9 +309,7 @@ export default function VisaPage() {
 
       {message && (
         <div className="alert alert-success">
-          <h6 className="fw-bold mb-1">
-            Visa Request Submitted
-          </h6>
+          <h6 className="fw-bold mb-1">Visa Request Submitted</h6>
 
           {message}
 
@@ -294,30 +328,25 @@ export default function VisaPage() {
       )}
 
       {error && (
-        <div className="alert alert-danger">
-          {error}
-        </div>
+        <div className="alert alert-danger">{error}</div>
       )}
 
       {loading ? (
         <div className="card border-0 shadow-sm">
           <div className="card-body text-center py-5">
-            Loading China Visa Information...
+            Loading Visa Information...
           </div>
         </div>
       ) : visaInformation.length === 0 ? (
         <div className="alert alert-warning">
-          China Visa Information is currently unavailable.
-          Please contact Airfly International Admin.
+          Visa Information is currently unavailable. Please contact Airfly International Admin.
         </div>
       ) : (
         <div className="row g-4">
           <div className="col-lg-8">
             <div className="card shadow border-0">
               <div className="card-header bg-primary text-white py-3">
-                <h5 className="mb-0">
-                  Visa Request Form
-                </h5>
+                <h5 className="mb-0">Visa Request Form</h5>
               </div>
 
               <div className="card-body">
@@ -325,15 +354,25 @@ export default function VisaPage() {
                   <div className="row">
                     <div className="col-md-6 mb-3">
                       <label className="form-label fw-semibold">
-                        Destination Country
+                        Destination Country *
                       </label>
 
-                      <input
-                        type="text"
-                        className="form-control"
-                        value="China"
-                        disabled
-                      />
+                      <select
+                        className="form-select"
+                        value={selectedCountry}
+                        onChange={(e) =>
+                          handleCountryChange(e.target.value)
+                        }
+                        required
+                      >
+                        <option value="">Select Country</option>
+
+                        {countries.map((country) => (
+                          <option key={country} value={country}>
+                            {country}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="col-md-6 mb-3">
@@ -348,16 +387,22 @@ export default function VisaPage() {
                           setSelectedVisaId(e.target.value)
                         }
                         required
+                        disabled={countryVisas.length === 0}
                       >
-                        {visaInformation.map((visa) => (
-                          <option
-                            key={visa.id}
-                            value={String(visa.id)}
-                          >
+                        <option value="">Select Visa Type</option>
+
+                        {countryVisas.map((visa) => (
+                          <option key={visa.id} value={String(visa.id)}>
                             {visa.visa_type}
                           </option>
                         ))}
                       </select>
+
+                      {selectedCountry && countryVisas.length === 0 && (
+                        <small className="text-danger">
+                          No active Visa Type available for this country.
+                        </small>
+                      )}
                     </div>
 
                     <div className="col-md-6 mb-3">
@@ -404,9 +449,7 @@ export default function VisaPage() {
                         className="form-control"
                         placeholder="Passenger Email"
                         value={email}
-                        onChange={(e) =>
-                          setEmail(e.target.value)
-                        }
+                        onChange={(e) => setEmail(e.target.value)}
                         required
                       />
                     </div>
@@ -421,9 +464,7 @@ export default function VisaPage() {
                         className="form-control"
                         placeholder="Mobile Number"
                         value={mobile}
-                        onChange={(e) =>
-                          setMobile(e.target.value)
-                        }
+                        onChange={(e) => setMobile(e.target.value)}
                         required
                       />
                     </div>
@@ -436,7 +477,9 @@ export default function VisaPage() {
                       {selectedVisa?.required_documents &&
                         selectedVisa.required_documents.length > 0 && (
                           <div className="alert alert-info">
-                            <strong>Required Documents:</strong>
+                            <strong>
+                              {selectedCountry} - Required Documents:
+                            </strong>
 
                             <ul className="mb-0 mt-2">
                               {selectedVisa.required_documents.map(
@@ -492,9 +535,7 @@ export default function VisaPage() {
                         rows={4}
                         placeholder="Additional information..."
                         value={remarks}
-                        onChange={(e) =>
-                          setRemarks(e.target.value)
-                        }
+                        onChange={(e) => setRemarks(e.target.value)}
                       />
                     </div>
                   </div>
@@ -502,7 +543,7 @@ export default function VisaPage() {
                   <button
                     type="submit"
                     className="btn btn-success px-4"
-                    disabled={submitting}
+                    disabled={submitting || !selectedVisa}
                   >
                     {submitting
                       ? "Submitting Request..."
@@ -516,9 +557,7 @@ export default function VisaPage() {
           <div className="col-lg-4">
             <div className="card shadow border-0">
               <div className="card-header bg-success text-white py-3">
-                <h5 className="mb-0">
-                  Visa Information
-                </h5>
+                <h5 className="mb-0">Visa Information</h5>
               </div>
 
               <div className="card-body">
@@ -529,7 +568,8 @@ export default function VisaPage() {
                     </h5>
 
                     <p>
-                      <strong>Destination:</strong> China
+                      <strong>Destination:</strong>{" "}
+                      {selectedVisa.destination_country}
                     </p>
 
                     <p>
@@ -556,9 +596,7 @@ export default function VisaPage() {
                     {selectedVisa.description && (
                       <>
                         <hr />
-                        <h6 className="fw-bold">
-                          Description
-                        </h6>
+                        <h6 className="fw-bold">Description</h6>
                         <p className="text-muted">
                           {selectedVisa.description}
                         </p>
@@ -579,7 +617,7 @@ export default function VisaPage() {
                   </>
                 ) : (
                   <p className="text-muted">
-                    Select a Visa Type to see details.
+                    Select a country and Visa Type to see details.
                   </p>
                 )}
 
