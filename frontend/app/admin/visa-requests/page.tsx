@@ -124,8 +124,14 @@ export default function AdminVisaRequestsPage() {
       let pagination: PaginationData = {};
 
       if (Array.isArray(payload)) {
-        rows = payload;
-        pagination = result;
+      rows = payload;
+
+      pagination = {
+        current_page: result.current_page,
+        last_page: result.last_page,
+        total: result.total,
+      };
+    }
       } else if (
         payload &&
         typeof payload === "object" &&
