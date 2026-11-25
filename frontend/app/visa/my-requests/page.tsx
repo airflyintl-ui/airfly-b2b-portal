@@ -5,32 +5,157 @@ import API from "../../../services/api";
 
 type VisaDocument = {
   url?: string;
+  secure_url?: string;
   public_id?: string;
+  name?: string;
+  resource_type?: string;
 };
 
 type VisaRequest = {
   id: number;
-  destination_country: string;
-  visa_type: string;
-  passenger_name: string;
-  passport_number: string;
-  email: string;
-  mobile: string;
-  remarks: string | null;
-  documents: VisaDocument[] | null;
-  visa_fee: string | number;
-  currency: string;
-  status: "pending" | "approved" | "rejected";
-  admin_note: string | null;
-  reviewed_at: string | null;
-  created_at: string;
+  destination_country?: string | null;
+  visa_type?: string | null;
+  passenger_name?: string | null;
+  passport_number?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  remarks?: string | null;
+  documents?: VisaDocument[] | null;
+  visa_fee?: string | number | null;
+  currency?: string | null;
+  status?: string | null;
+  admin_note?: string | null;
+  reviewed_at?: string | null;
+  created_at?: string | null;
 };
 
 type ApiResponse = {
   success?: boolean;
   message?: string;
-  data?: VisaRequest[] | VisaRequest;
+  data?: unknown;
 };
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function normalizeDocuments(value: unknown): VisaDocument[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.map((item): VisaDocument => {
+    if (typeof item === "string") {
+      return { url: item };
+    }
+
+    if (!isObject(item)) return {};
+
+    return {
+      url:
+        typeof item.url === "string"
+          ? item.url
+          : typeof item.secure_url === "string"
+            ? item.secure_url
+            : undefined,
+      secure_url:
+        typeof item.secure_url === "string"
+          ? item.secure_url
+          : undefined,
+      public_id:
+        typeof item.public_id === "string"
+          ? item.public_id
+          : undefined,
+      name:
+        typeof item.name === "string"
+          ? item.name
+          : undefined,
+      resource_type:
+        typeof item.resource_type === "string"
+          ? item.resource_type
+          : undefined,
+    };
+  });
+}
+
+function normalizeRequest(item: unknown): VisaRequest | null {
+  if (!isObject(item) || typeof item.id !== "number") {
+    return null;
+  }
+
+  return {
+    id: item.id,
+    destination_country:
+      typeof item.destination_country === "string"
+        ? item.destination_country
+        : "",
+    visa_type:
+      typeof item.visa_type === "string"
+        ? item.visa_type
+        : "",
+    passenger_name:
+      typeof item.passenger_name === "string"
+        ? item.passenger_name
+        : "",
+    passport_number:
+      typeof item.passport_number === "string"
+        ? item.passport_number
+        : "",
+    email: typeof item.email === "string" ? item.email : "",
+    mobile: typeof item.mobile === "string" ? item.mobile : "",
+    remarks: typeof item.remarks === "string" ? item.remarks : null,
+    documents: normalizeDocuments(item.documents),
+    visa_fee:
+      typeof item.visa_fee === "string" ||
+      typeof item.visa_fee === "number"
+        ? item.visa_fee
+        : 0,
+    currency:
+      typeof item.currency === "string" ? item.currency : "USD",
+    status:
+      typeof item.status === "string"
+        ? item.status.toLowerCase()
+        : "pending",
+    admin_note:
+      typeof item.admin_note === "string"
+        ? item.admin_note
+        : null,
+    reviewed_at:
+      typeof item.reviewed_at === "string"
+        ? item.reviewed_at
+        : null,
+    created_at:
+      typeof item.created_at === "string"
+        ? item.created_at
+        : null,
+  };
+}
+
+function extractRequests(data: unknown): VisaRequest[] {
+  let payload = data;
+
+  // Laravel paginator: { data: [...] }
+  if (isObject(payload) && "data" in payload) {
+    payload = payload.data;
+  }
+
+  // Nested API wrapper:
+  // { data: { data: [...] } }
+  if (isObject(payload) && "data" in payload) {
+    payload = payload.data;
+  }
+
+  if (Array.isArray(payload)) {
+    return payload
+      .map(normalizeRequest)
+      .filter((item): item is VisaRequest => item !== null);
+  }
+
+  if (isObject(payload)) {
+    const single = normalizeRequest(payload);
+    return single ? [single] : [];
+  }
+
+  return [];
+}
 
 export default function MyVisaRequestsPage() {
   const [requests, setRequests] = useState<VisaRequest[]>([]);
@@ -38,7 +163,6 @@ export default function MyVisaRequestsPage() {
   const [error, setError] = useState("");
   const [selectedRequest, setSelectedRequest] =
     useState<VisaRequest | null>(null);
-
   const [statusFilter, setStatusFilter] = useState("all");
 
   const getHeaders = useCallback(() => {
@@ -55,14 +179,11 @@ export default function MyVisaRequestsPage() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        `${API}/visa-requests`,
-        {
-          method: "GET",
-          headers: getHeaders(),
-          cache: "no-store",
-        }
-      );
+      const response = await fetch(`${API}/visa-requests`, {
+        method: "GET",
+        headers: getHeaders(),
+        cache: "no-store",
+      });
 
       const result = (await response.json()) as ApiResponse;
 
@@ -72,13 +193,7 @@ export default function MyVisaRequestsPage() {
         );
       }
 
-      const list = Array.isArray(result.data)
-        ? result.data
-        : result.data
-          ? [result.data]
-          : [];
-
-      setRequests(list);
+      setRequests(extractRequests(result.data));
     } catch (err) {
       setError(
         err instanceof Error
@@ -94,16 +209,28 @@ export default function MyVisaRequestsPage() {
     void loadRequests();
   }, [loadRequests]);
 
+  const getStatus = (status?: string | null) => {
+    const normalized = (status || "pending").toLowerCase();
+
+    if (normalized === "approved") return "approved";
+    if (normalized === "rejected") return "rejected";
+
+    return "pending";
+  };
+
   const filteredRequests = requests.filter((request) => {
     if (statusFilter === "all") return true;
-
-    return request.status === statusFilter;
+    return getStatus(request.status) === statusFilter;
   });
 
-  const formatDate = (date: string) => {
+  const formatDate = (date?: string | null) => {
     if (!date) return "-";
 
-    return new Date(date).toLocaleString("en-GB", {
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) return "-";
+
+    return parsedDate.toLocaleString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -112,24 +239,34 @@ export default function MyVisaRequestsPage() {
     });
   };
 
-  const getStatusClass = (status: string) => {
-    if (status === "approved") return "bg-success";
+  const getStatusClass = (status?: string | null) => {
+    const normalized = getStatus(status);
 
-    if (status === "rejected") return "bg-danger";
+    if (normalized === "approved") return "bg-success";
+    if (normalized === "rejected") return "bg-danger";
 
     return "bg-warning text-dark";
   };
 
+  const formatStatus = (status?: string | null) => {
+    return getStatus(status).toUpperCase();
+  };
+
+  const formatFee = (fee?: string | number | null) => {
+    const amount = Number(fee ?? 0);
+    return Number.isFinite(amount) ? amount.toFixed(2) : "0.00";
+  };
+
   const pendingCount = requests.filter(
-    (item) => item.status === "pending"
+    (item) => getStatus(item.status) === "pending"
   ).length;
 
   const approvedCount = requests.filter(
-    (item) => item.status === "approved"
+    (item) => getStatus(item.status) === "approved"
   ).length;
 
   const rejectedCount = requests.filter(
-    (item) => item.status === "rejected"
+    (item) => getStatus(item.status) === "rejected"
   ).length;
 
   return (
@@ -141,14 +278,11 @@ export default function MyVisaRequestsPage() {
           </h2>
 
           <p className="text-muted mb-0">
-            Track your submitted China Visa Applications.
+            Track your submitted Visa Applications.
           </p>
         </div>
 
-        <a
-          href="/visa"
-          className="btn btn-success"
-        >
+        <a href="/visa" className="btn btn-success">
           + New Visa Application
         </a>
       </div>
@@ -163,9 +297,7 @@ export default function MyVisaRequestsPage() {
         <div className="col-md-4">
           <div className="card border-0 shadow-sm">
             <div className="card-body">
-              <div className="text-muted">
-                Pending Requests
-              </div>
+              <div className="text-muted">Pending Requests</div>
               <h3 className="fw-bold text-warning mb-0">
                 {pendingCount}
               </h3>
@@ -176,9 +308,7 @@ export default function MyVisaRequestsPage() {
         <div className="col-md-4">
           <div className="card border-0 shadow-sm">
             <div className="card-body">
-              <div className="text-muted">
-                Approved Requests
-              </div>
+              <div className="text-muted">Approved Requests</div>
               <h3 className="fw-bold text-success mb-0">
                 {approvedCount}
               </h3>
@@ -189,9 +319,7 @@ export default function MyVisaRequestsPage() {
         <div className="col-md-4">
           <div className="card border-0 shadow-sm">
             <div className="card-body">
-              <div className="text-muted">
-                Rejected Requests
-              </div>
+              <div className="text-muted">Rejected Requests</div>
               <h3 className="fw-bold text-danger mb-0">
                 {rejectedCount}
               </h3>
@@ -202,9 +330,7 @@ export default function MyVisaRequestsPage() {
 
       <div className="card border-0 shadow-sm">
         <div className="card-header bg-dark text-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-          <h5 className="mb-0">
-            My Applications
-          </h5>
+          <h5 className="mb-0">My Applications</h5>
 
           <button
             type="button"
@@ -226,9 +352,7 @@ export default function MyVisaRequestsPage() {
               <select
                 className="form-select"
                 value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value)
-                }
+                onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="all">All Requests</option>
                 <option value="pending">Pending</option>
@@ -262,6 +386,7 @@ export default function MyVisaRequestsPage() {
                     <th>Request ID</th>
                     <th>Passenger Name</th>
                     <th>Passport</th>
+                    <th>Destination</th>
                     <th>Visa Type</th>
                     <th>Visa Fee</th>
                     <th>Status</th>
@@ -273,42 +398,26 @@ export default function MyVisaRequestsPage() {
                 <tbody>
                   {filteredRequests.map((request) => (
                     <tr key={request.id}>
-                      <td className="fw-semibold">
-                        #{request.id}
-                      </td>
-
-                      <td>{request.passenger_name}</td>
-
-                      <td>{request.passport_number}</td>
-
-                      <td>{request.visa_type}</td>
-
+                      <td className="fw-semibold">#{request.id}</td>
+                      <td>{request.passenger_name || "-"}</td>
+                      <td>{request.passport_number || "-"}</td>
+                      <td>{request.destination_country || "-"}</td>
+                      <td>{request.visa_type || "-"}</td>
                       <td>
-                        {request.currency}{" "}
-                        {Number(request.visa_fee).toFixed(2)}
+                        {request.currency || "USD"}{" "}
+                        {formatFee(request.visa_fee)}
                       </td>
-
                       <td>
-                        <span
-                          className={`badge ${getStatusClass(
-                            request.status
-                          )}`}
-                        >
-                          {request.status.toUpperCase()}
+                        <span className={`badge ${getStatusClass(request.status)}`}>
+                          {formatStatus(request.status)}
                         </span>
                       </td>
-
-                      <td>
-                        {formatDate(request.created_at)}
-                      </td>
-
+                      <td>{formatDate(request.created_at)}</td>
                       <td>
                         <button
                           type="button"
                           className="btn btn-sm btn-primary"
-                          onClick={() =>
-                            setSelectedRequest(request)
-                          }
+                          onClick={() => setSelectedRequest(request)}
                         >
                           View Details
                         </button>
@@ -328,9 +437,7 @@ export default function MyVisaRequestsPage() {
           role="dialog"
           aria-modal="true"
           tabIndex={-1}
-          style={{
-            backgroundColor: "rgba(0,0,0,0.55)",
-          }}
+          style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
         >
           <div className="modal-dialog modal-lg modal-dialog-scrollable">
             <div className="modal-content">
@@ -355,47 +462,45 @@ export default function MyVisaRequestsPage() {
                 <div className="row g-3">
                   <div className="col-md-6">
                     <strong>Passenger Name</strong>
-                    <div>{selectedRequest.passenger_name}</div>
+                    <div>{selectedRequest.passenger_name || "-"}</div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Passport Number</strong>
-                    <div>{selectedRequest.passport_number}</div>
+                    <div>{selectedRequest.passport_number || "-"}</div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Email</strong>
-                    <div>{selectedRequest.email}</div>
+                    <div>{selectedRequest.email || "-"}</div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Mobile</strong>
-                    <div>{selectedRequest.mobile}</div>
+                    <div>{selectedRequest.mobile || "-"}</div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Destination</strong>
-                    <div>{selectedRequest.destination_country}</div>
+                    <div>{selectedRequest.destination_country || "-"}</div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Visa Type</strong>
-                    <div>{selectedRequest.visa_type}</div>
+                    <div>{selectedRequest.visa_type || "-"}</div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Visa Fee</strong>
                     <div>
-                      {selectedRequest.currency}{" "}
-                      {Number(selectedRequest.visa_fee).toFixed(2)}
+                      {selectedRequest.currency || "USD"}{" "}
+                      {formatFee(selectedRequest.visa_fee)}
                     </div>
                   </div>
 
                   <div className="col-md-6">
                     <strong>Submitted Date</strong>
-                    <div>
-                      {formatDate(selectedRequest.created_at)}
-                    </div>
+                    <div>{formatDate(selectedRequest.created_at)}</div>
                   </div>
                 </div>
 
@@ -405,12 +510,8 @@ export default function MyVisaRequestsPage() {
                   Application Status
                 </h6>
 
-                <span
-                  className={`badge fs-6 ${getStatusClass(
-                    selectedRequest.status
-                  )}`}
-                >
-                  {selectedRequest.status.toUpperCase()}
+                <span className={`badge fs-6 ${getStatusClass(selectedRequest.status)}`}>
+                  {formatStatus(selectedRequest.status)}
                 </span>
 
                 {selectedRequest.reviewed_at && (
@@ -422,24 +523,18 @@ export default function MyVisaRequestsPage() {
 
                 <hr />
 
-                <h6 className="fw-bold text-primary">
-                  Admin Note
-                </h6>
+                <h6 className="fw-bold text-primary">Admin Note</h6>
 
                 <div className="alert alert-info">
-                  {selectedRequest.admin_note ||
-                    "No Admin Note available yet."}
+                  {selectedRequest.admin_note || "No Admin Note available yet."}
                 </div>
 
                 <hr />
 
-                <h6 className="fw-bold text-primary">
-                  Remarks
-                </h6>
+                <h6 className="fw-bold text-primary">Remarks</h6>
 
                 <p>
-                  {selectedRequest.remarks ||
-                    "No remarks provided."}
+                  {selectedRequest.remarks || "No remarks provided."}
                 </p>
 
                 <hr />
@@ -448,22 +543,25 @@ export default function MyVisaRequestsPage() {
                   Uploaded Documents
                 </h6>
 
-                {Array.isArray(selectedRequest.documents) &&
+                {selectedRequest.documents &&
                 selectedRequest.documents.length > 0 ? (
                   <div className="list-group">
-                    {selectedRequest.documents.map(
-                      (document, index) => (
+                    {selectedRequest.documents.map((document, index) => {
+                      const documentUrl =
+                        document.url || document.secure_url;
+
+                      return (
                         <div
                           key={`${document.public_id || "document"}-${index}`}
-                          className="list-group-item d-flex justify-content-between align-items-center"
+                          className="list-group-item d-flex justify-content-between align-items-center gap-2"
                         >
                           <span>
-                            Document {index + 1}
+                            {document.name || `Document ${index + 1}`}
                           </span>
 
-                          {document.url ? (
+                          {documentUrl ? (
                             <a
-                              href={document.url}
+                              href={documentUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn btn-sm btn-outline-primary"
@@ -476,8 +574,8 @@ export default function MyVisaRequestsPage() {
                             </span>
                           )}
                         </div>
-                      )
-                    )}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted">
