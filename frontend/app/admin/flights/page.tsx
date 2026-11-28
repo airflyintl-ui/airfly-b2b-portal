@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
+import API from "../../../services/api";
 import FlightForm from "./FlightForm";
 import FlightTable, { type Flight } from "./FlightTable";
 import EditFlightModal from "./EditFlightModal";
@@ -15,21 +16,50 @@ type Airline = {
 };
 
 type AirlinesResponse = {
-  success: boolean;
-  airlines: Airline[];
+  success?: boolean;
+  airlines?: Airline[];
+  data?: Airline[];
   message?: string;
 };
 
 type FlightsResponse = {
-  success: boolean;
-  flights: Flight[];
+  success?: boolean;
+  flights?: Flight[];
+  data?: Flight[];
   message?: string;
 };
 
 type ApiResponse = {
-  success: boolean;
+  success?: boolean;
   message?: string;
 };
+
+const API_URL = API.replace(/\/+$/, "");
+
+function getHeaders(): Record<string, string> {
+  const token =
+    localStorage.getItem("admin_token") ||
+    localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Admin login required. Please login again.");
+  }
+
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+async function parseResponse<T>(res: Response): Promise<T> {
+  const text = await res.text();
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Invalid server response. HTTP ${res.status}`);
+  }
+}
 
 export default function FlightsPage() {
   const [loading, setLoading] = useState(true);
@@ -39,7 +69,6 @@ export default function FlightsPage() {
 
   const [search, setSearch] = useState("");
 
-  // Add Flight
   const [airlineId, setAirlineId] = useState("");
   const [flightNo, setFlightNo] = useState("");
   const [from, setFrom] = useState("");
@@ -50,7 +79,6 @@ export default function FlightsPage() {
   const [businessFare, setBusinessFare] = useState("");
   const [availableSeats, setAvailableSeats] = useState("");
 
-  // Edit Flight
   const [editId, setEditId] = useState<number | null>(null);
   const [editAirlineId, setEditAirlineId] = useState("");
   const [editFlightNo, setEditFlightNo] = useState("");
@@ -62,7 +90,76 @@ export default function FlightsPage() {
   const [editBusinessFare, setEditBusinessFare] = useState("");
   const [editAvailableSeats, setEditAvailableSeats] = useState("");
 
-  // Load Data
+  const [saving, setSaving] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  const loadAirlines = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/airlines`, {
+        method: "GET",
+        headers: getHeaders(),
+        cache: "no-store",
+      });
+
+      const data = await parseResponse<AirlinesResponse>(res);
+
+      if (!res.ok || data.success === false) {
+        throw new Error(
+          data.message || `Failed to load airlines. HTTP ${res.status}`
+        );
+      }
+
+      const list = data.airlines || data.data || [];
+
+      setAirlines(
+        Array.isArray(list)
+          ? list.filter((item) => item.status === undefined || Boolean(item.status))
+          : []
+      );
+    } catch (error) {
+      console.error("Load Airlines Error:", error);
+      setAirlines([]);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to load airlines."
+      );
+    }
+  }, []);
+
+  const loadFlights = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/flights`, {
+        method: "GET",
+        headers: getHeaders(),
+        cache: "no-store",
+      });
+
+      const data = await parseResponse<FlightsResponse>(res);
+
+      if (!res.ok || data.success === false) {
+        throw new Error(
+          data.message || `Failed to load flights. HTTP ${res.status}`
+        );
+      }
+
+      const list = data.flights || data.data || [];
+      setFlights(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error("Load Flights Error:", error);
+      setFlights([]);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to load flights."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadAirlines();
@@ -70,69 +167,25 @@ export default function FlightsPage() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [loadAirlines, loadFlights]);
 
-  async function loadAirlines() {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/airlines", {
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      const data: AirlinesResponse = await res.json();
-
-      console.log("Airlines Response:", data);
-
-      if (data.success && Array.isArray(data.airlines)) {
-        setAirlines(data.airlines);
-      } else {
-        setAirlines([]);
-      }
-    } catch (err) {
-      console.error("Load Airlines Error:", err);
-      setAirlines([]);
-    }
-  }
-
-  async function loadFlights() {
-    const token = localStorage.getItem("token");
-
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/flights", {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data: FlightsResponse = await res.json();
-
-      if (data.success && Array.isArray(data.flights)) {
-        setFlights(data.flights);
-      } else {
-        setFlights([]);
-      }
-    } catch (err) {
-      console.error("Load Flights Error:", err);
-      setFlights([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Save Flight
-  async function saveFlight(e: React.FormEvent<HTMLFormElement>) {
+  async function saveFlight(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const token = localStorage.getItem("token");
+    if (saving) return;
+
+    if (!airlineId) {
+      alert("Please select an airline.");
+      return;
+    }
+
+    setSaving(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/flights", {
+      const res = await fetch(`${API_URL}/flights`, {
         method: "POST",
         headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
+          ...getHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -148,129 +201,150 @@ export default function FlightsPage() {
         }),
       });
 
-      const data: ApiResponse = await res.json();
+      const data = await parseResponse<ApiResponse>(res);
 
-      alert(data.message || "Flight save request completed");
-
-      if (data.success) {
-        setAirlineId("");
-        setFlightNo("");
-        setFrom("");
-        setTo("");
-        setDepartureTime("");
-        setArrivalTime("");
-        setEconomyFare("");
-        setBusinessFare("");
-        setAvailableSeats("");
-
-        await loadFlights();
+      if (!res.ok || data.success === false) {
+        throw new Error(
+          data.message || `Failed to save flight. HTTP ${res.status}`
+        );
       }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save flight");
+
+      alert(data.message || "Flight saved successfully.");
+
+      setAirlineId("");
+      setFlightNo("");
+      setFrom("");
+      setTo("");
+      setDepartureTime("");
+      setArrivalTime("");
+      setEconomyFare("");
+      setBusinessFare("");
+      setAvailableSeats("");
+
+      await loadFlights();
+    } catch (error) {
+      console.error("Save Flight Error:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to save flight."
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
-  // Delete Flight
   async function deleteFlight(id: number) {
-    if (!confirm("Are you sure you want to delete this flight?")) {
+    if (!window.confirm("Are you sure you want to delete this flight?")) {
       return;
     }
 
-    const token = localStorage.getItem("token");
-
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/flights/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await fetch(`${API_URL}/flights/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
 
-      const data: ApiResponse = await res.json();
+      const data = await parseResponse<ApiResponse>(res);
 
-      alert(data.message || "Delete request completed");
-
-      if (data.success) {
-        await loadFlights();
+      if (!res.ok || data.success === false) {
+        throw new Error(
+          data.message || `Delete failed. HTTP ${res.status}`
+        );
       }
-    } catch (err) {
-      console.error(err);
-      alert("Delete failed");
+
+      alert(data.message || "Flight deleted successfully.");
+      await loadFlights();
+    } catch (error) {
+      console.error("Delete Flight Error:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Delete failed."
+      );
     }
   }
 
-  // Open Edit Modal
   function openEditFlight(item: Flight) {
     setEditId(item.id);
-
     setEditAirlineId(String(item.airline_id ?? ""));
     setEditFlightNo(item.flight_no);
     setEditFrom(item.from);
     setEditTo(item.to);
-
     setEditDepartureTime(item.departure_time);
     setEditArrivalTime(item.arrival_time);
-
     setEditEconomyFare(String(item.economy_fare));
     setEditBusinessFare(String(item.business_fare));
     setEditAvailableSeats(String(item.available_seats));
   }
 
-  // Update Flight
   async function updateFlight() {
-    if (editId === null) return;
+    if (editId === null || updating) return;
 
-    const token = localStorage.getItem("token");
+    if (!editAirlineId) {
+      alert("Please select an airline.");
+      return;
+    }
+
+    setUpdating(true);
 
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/flights/${editId}`,
-        {
-          method: "PUT",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            airline_id: editAirlineId,
-            flight_no: editFlightNo,
-            from: editFrom,
-            to: editTo,
-            departure_time: editDepartureTime,
-            arrival_time: editArrivalTime,
-            economy_fare: editEconomyFare,
-            business_fare: editBusinessFare,
-            available_seats: editAvailableSeats,
-          }),
-        }
-      );
+      const res = await fetch(`${API_URL}/flights/${editId}`, {
+        method: "PUT",
+        headers: {
+          ...getHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          airline_id: editAirlineId,
+          flight_no: editFlightNo,
+          from: editFrom,
+          to: editTo,
+          departure_time: editDepartureTime,
+          arrival_time: editArrivalTime,
+          economy_fare: editEconomyFare,
+          business_fare: editBusinessFare,
+          available_seats: editAvailableSeats,
+        }),
+      });
 
-      const data: ApiResponse = await res.json();
+      const data = await parseResponse<ApiResponse>(res);
 
-      alert(data.message || "Update request completed");
-
-      if (data.success) {
-        setEditId(null);
-        await loadFlights();
+      if (!res.ok || data.success === false) {
+        throw new Error(
+          data.message || `Update failed. HTTP ${res.status}`
+        );
       }
-    } catch (err) {
-      console.error(err);
-      alert("Update failed");
+
+      alert(data.message || "Flight updated successfully.");
+
+      setEditId(null);
+      await loadFlights();
+    } catch (error) {
+      console.error("Update Flight Error:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Update failed."
+      );
+    } finally {
+      setUpdating(false);
     }
   }
 
-  // JSX
   return (
     <div className="container-fluid py-4">
-      <h2 className="fw-bold mb-4">
-        Flight Management
-      </h2>
+      <h2 className="fw-bold mb-4">Flight Management</h2>
+
+      {airlines.length === 0 && !loading && (
+        <div className="alert alert-warning">
+          No active airlines found. Please add or activate an airline
+          from Admin Airline Management first.
+        </div>
+      )}
 
       <div className="row">
         <div className="col-lg-4">
