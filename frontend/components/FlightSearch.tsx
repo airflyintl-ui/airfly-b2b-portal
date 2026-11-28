@@ -164,6 +164,7 @@ const AIRLINES: AirlineOption[] = [
   { code: "OD", name: "Batik Air Malaysia", aliases: ["Batik Air"] },
   { code: "VJ", name: "VietJet Air", aliases: ["Vietjet"] },
   { code: "FD", name: "Thai AirAsia" },
+  { code: "OV", name: "SALAM AIR" },
 ];
 
 const emptyPassenger = (type: PassengerType): Passenger => ({
