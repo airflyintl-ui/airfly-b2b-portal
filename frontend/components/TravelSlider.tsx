@@ -64,15 +64,11 @@ export default function TravelSlider() {
         cache: "no-store",
       });
 
-      if (!res.ok) {
-        return;
-      }
+      if (!res.ok) return;
 
       const data: PosterApiResponse = await res.json();
 
-      if (!data.success || !Array.isArray(data.posters)) {
-        return;
-      }
+      if (!data.success || !Array.isArray(data.posters)) return;
 
       const activePosters = data.posters
         .filter(
@@ -83,9 +79,7 @@ export default function TravelSlider() {
         )
         .sort((a, b) => a.sort_order - b.sort_order);
 
-      if (activePosters.length === 0) {
-        return;
-      }
+      if (activePosters.length === 0) return;
 
       const dynamicSlides: Slide[] = activePosters.map((poster) => ({
         id: poster.id,
@@ -111,9 +105,7 @@ export default function TravelSlider() {
   }, [loadPosters]);
 
   useEffect(() => {
-    if (slides.length <= 1) {
-      return;
-    }
+    if (slides.length <= 1) return;
 
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % slides.length);
@@ -122,21 +114,9 @@ export default function TravelSlider() {
     return () => window.clearInterval(timer);
   }, [slides.length]);
 
-  const previous = () => {
-    setActive((current) =>
-      current === 0 ? slides.length - 1 : current - 1
-    );
-  };
-
-  const next = () => {
-    setActive((current) => (current + 1) % slides.length);
-  };
-
   const slide = slides[active] || slides[0];
 
-  if (!slide) {
-    return null;
-  }
+  if (!slide) return null;
 
   return (
     <section className="w-full px-2 py-3 md:px-8 md:py-5">
@@ -147,7 +127,7 @@ export default function TravelSlider() {
             key={slide.id}
             src={slide.image}
             alt={slide.title || "Air Fly International travel poster"}
-            className="block h-auto max-h-none w-full object-contain"
+            className="block h-auto w-full object-contain"
             style={{
               width: "100%",
               height: "auto",
@@ -156,43 +136,24 @@ export default function TravelSlider() {
           />
         </div>
 
+        {/* Pagination Dots Only */}
         {slides.length > 1 && (
-          <>
-            <button
-              type="button"
-              onClick={previous}
-              aria-label="Previous poster"
-              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-2xl text-white"
-            >
-              ‹
-            </button>
-
-            <button
-              type="button"
-              onClick={next}
-              aria-label="Next poster"
-              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-2xl text-white"
-            >
-              ›
-            </button>
-
-            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-              {slides.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActive(index)}
-                  aria-label={`Show poster ${index + 1}`}
-                  aria-current={active === index ? "true" : undefined}
-                  className={`h-2.5 rounded-full ${
-                    active === index
-                      ? "w-8 bg-yellow-400"
-                      : "w-2.5 bg-white"
-                  }`}
-                />
-              ))}
-            </div>
-          </>
+          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+            {slides.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActive(index)}
+                aria-label={`Show poster ${index + 1}`}
+                aria-current={active === index ? "true" : undefined}
+                className={`h-2.5 rounded-full transition-all duration-300 ${
+                  active === index
+                    ? "w-8 bg-yellow-400"
+                    : "w-2.5 bg-white"
+                }`}
+              />
+            ))}
+          </div>
         )}
       </div>
     </section>
