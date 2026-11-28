@@ -3,6 +3,7 @@
 type AirlineOption = {
   id: number;
   name: string;
+  code?: string;
 };
 
 type Props = {
@@ -69,62 +70,74 @@ export default function FlightForm({
       <div className="card-body">
         <form onSubmit={saveFlight}>
           <div className="mb-3">
-            <label>Airline</label>
+            <label className="form-label">Airline</label>
 
             <select
               className="form-select"
               value={airlineId}
               onChange={(e) => setAirlineId(e.target.value)}
               required
+              disabled={airlines.length === 0}
             >
-              <option value="">Select Airline</option>
+              <option value="">
+                {airlines.length > 0
+                  ? "Select Airline"
+                  : "No Airline Available"}
+              </option>
 
               {airlines.map((item) => (
-                <option key={item.id} value={item.id}>
+                <option key={item.id} value={String(item.id)}>
                   {item.name}
+                  {item.code ? ` (${item.code})` : ""}
                 </option>
               ))}
             </select>
+
+            {airlines.length === 0 && (
+              <small className="text-danger d-block mt-2">
+                No active airlines found. Please add or activate an airline
+                in Airline Management.
+              </small>
+            )}
           </div>
 
           <div className="mb-3">
-            <label>Flight No</label>
-
+            <label className="form-label">Flight No</label>
             <input
               className="form-control"
               value={flightNo}
               onChange={(e) => setFlightNo(e.target.value)}
+              placeholder="Example: G9 123"
               required
             />
           </div>
 
           <div className="row">
             <div className="col-6">
-              <label>From</label>
-
+              <label className="form-label">From</label>
               <input
                 className="form-control"
                 value={from}
-                onChange={(e) => setFrom(e.target.value)}
+                onChange={(e) => setFrom(e.target.value.toUpperCase())}
+                placeholder="DAC"
                 required
               />
             </div>
 
             <div className="col-6">
-              <label>To</label>
-
+              <label className="form-label">To</label>
               <input
                 className="form-control"
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
+                onChange={(e) => setTo(e.target.value.toUpperCase())}
+                placeholder="DXB"
                 required
               />
             </div>
           </div>
 
           <div className="mt-3">
-            <label>Departure</label>
-
+            <label className="form-label">Departure</label>
             <input
               type="datetime-local"
               className="form-control"
@@ -135,8 +148,7 @@ export default function FlightForm({
           </div>
 
           <div className="mt-3">
-            <label>Arrival</label>
-
+            <label className="form-label">Arrival</label>
             <input
               type="datetime-local"
               className="form-control"
@@ -148,10 +160,11 @@ export default function FlightForm({
 
           <div className="row mt-3">
             <div className="col-6">
-              <label>Economy Fare</label>
-
+              <label className="form-label">Economy Fare</label>
               <input
                 type="number"
+                min="0"
+                step="0.01"
                 className="form-control"
                 value={economyFare}
                 onChange={(e) => setEconomyFare(e.target.value)}
@@ -160,10 +173,11 @@ export default function FlightForm({
             </div>
 
             <div className="col-6">
-              <label>Business Fare</label>
-
+              <label className="form-label">Business Fare</label>
               <input
                 type="number"
+                min="0"
+                step="0.01"
                 className="form-control"
                 value={businessFare}
                 onChange={(e) => setBusinessFare(e.target.value)}
@@ -173,10 +187,10 @@ export default function FlightForm({
           </div>
 
           <div className="mt-3">
-            <label>Available Seats</label>
-
+            <label className="form-label">Available Seats</label>
             <input
               type="number"
+              min="0"
               className="form-control"
               value={availableSeats}
               onChange={(e) => setAvailableSeats(e.target.value)}
@@ -184,7 +198,11 @@ export default function FlightForm({
             />
           </div>
 
-          <button className="btn btn-success w-100 mt-4">
+          <button
+            type="submit"
+            className="btn btn-success w-100 mt-4"
+            disabled={airlines.length === 0}
+          >
             Save Flight
           </button>
         </form>
