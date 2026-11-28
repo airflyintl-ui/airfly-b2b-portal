@@ -31,6 +31,12 @@ type ContactDetails = {
 
 type SelectedOffers = Record<number, string>;
 
+type AirlineOption = {
+  code: string;
+  name: string;
+  aliases?: string[];
+};
+
 type FlightDataSegment = {
   airline_name?: string;
   airline?: string;
@@ -116,6 +122,50 @@ type FlightSearchRequest =
       infants: number;
     };
 
+const AIRLINES: AirlineOption[] = [
+  { code: "G9", name: "Air Arabia", aliases: ["Air Arabia Abu Dhabi"] },
+  { code: "EK", name: "Emirates" },
+  { code: "QR", name: "Qatar Airways", aliases: ["Qatar"] },
+  { code: "BG", name: "Biman Bangladesh Airlines", aliases: ["Biman"] },
+  { code: "BS", name: "US-Bangla Airlines", aliases: ["US Bangla"] },
+  { code: "EY", name: "Etihad Airways", aliases: ["Etihad"] },
+  { code: "FZ", name: "Flydubai", aliases: ["Fly Dubai"] },
+  { code: "SV", name: "Saudia", aliases: ["Saudi Arabian Airlines"] },
+  { code: "TK", name: "Turkish Airlines", aliases: ["Turkish"] },
+  { code: "SQ", name: "Singapore Airlines", aliases: ["Singapore"] },
+  { code: "GF", name: "Gulf Air" },
+  { code: "WY", name: "Oman Air" },
+  { code: "AI", name: "Air India" },
+  { code: "6E", name: "IndiGo", aliases: ["Indigo"] },
+  { code: "MH", name: "Malaysia Airlines", aliases: ["Malaysia"] },
+  { code: "TG", name: "Thai Airways", aliases: ["Thai"] },
+  { code: "CX", name: "Cathay Pacific", aliases: ["Cathay"] },
+  { code: "KL", name: "KLM Royal Dutch Airlines", aliases: ["KLM"] },
+  { code: "AF", name: "Air France" },
+  { code: "LH", name: "Lufthansa" },
+  { code: "BA", name: "British Airways" },
+  { code: "WY", name: "Oman Air" },
+  { code: "UL", name: "SriLankan Airlines", aliases: ["Sri Lankan"] },
+  { code: "RJ", name: "Royal Jordanian" },
+  { code: "KU", name: "Kuwait Airways" },
+  { code: "J9", name: "Jazeera Airways", aliases: ["Jazeera"] },
+  { code: "PK", name: "Pakistan International Airlines", aliases: ["PIA"] },
+  { code: "W6", name: "Wizz Air", aliases: ["Wizzair"] },
+  { code: "U2", name: "easyJet", aliases: ["Easy Jet"] },
+  { code: "G4", name: "Allegiant Air" },
+  { code: "QF", name: "Qantas Airways", aliases: ["Qantas"] },
+  { code: "NH", name: "All Nippon Airways", aliases: ["ANA"] },
+  { code: "JL", name: "Japan Airlines", aliases: ["JAL"] },
+  { code: "OZ", name: "Asiana Airlines", aliases: ["Asiana"] },
+  { code: "KE", name: "Korean Air" },
+  { code: "VN", name: "Vietnam Airlines" },
+  { code: "PR", name: "Philippine Airlines" },
+  { code: "AK", name: "AirAsia" },
+  { code: "OD", name: "Batik Air Malaysia", aliases: ["Batik Air"] },
+  { code: "VJ", name: "VietJet Air", aliases: ["Vietjet"] },
+  { code: "FD", name: "Thai AirAsia" },
+];
+
 const emptyPassenger = (type: PassengerType): Passenger => ({
   type,
   firstName: "",
@@ -129,6 +179,7 @@ const emptyPassenger = (type: PassengerType): Passenger => ({
 
 export default function FlightSearch() {
   const [tripType, setTripType] = useState<TripType>("oneway");
+  const [selectedAirline, setSelectedAirline] = useState("");
 
   const [form, setForm] = useState({
     from: "DAC",
@@ -177,6 +228,74 @@ export default function FlightSearch() {
     String(now.getMonth() + 1).padStart(2, "0"),
     String(now.getDate()).padStart(2, "0"),
   ].join("-");
+
+  // Airline matching
+
+  const normalizeAirlineValue = (value: string) =>
+    value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  const matchesAirline = (offer: FlightOffer) => {
+    if (!selectedAirline) return true;
+
+    const selected = AIRLINES.find(
+      (airline) => airline.code === selectedAirline
+    );
+
+    if (!selected) return true;
+
+    const allSegments = [
+      ...(offer.outbound?.segments || []),
+      ...(offer.inbound?.segments || []),
+    ];
+
+    const airlineValues = [
+      offer.owner_airline || "",
+      ...allSegments.flatMap((segment) => [
+        segment.airline || "",
+        segment.airline_name || "",
+      ]),
+    ];
+
+    const normalizedCode = normalizeAirlineValue(selected.code);
+
+    const codeMatch = airlineValues.some(
+      (value) =>
+        normalizeAirlineValue(value) === normalizedCode
+    );
+
+    const nameCandidates = [
+      selected.name,
+      ...(selected.aliases || []),
+    ].map(normalizeAirlineValue);
+
+    const nameMatch = airlineValues.some((value) => {
+      const normalizedValue = normalizeAirlineValue(value);
+
+      return nameCandidates.some(
+        (name) =>
+          normalizedValue === name ||
+          normalizedValue.includes(name)
+      );
+    });
+
+    const flightNumberMatch = allSegments.some((segment) => {
+      const flightNumber = normalizeAirlineValue(
+        segment.flight_no || ""
+      );
+
+      return flightNumber.startsWith(normalizedCode);
+    });
+
+    return codeMatch || nameMatch || flightNumberMatch;
+  };
+
+  const handleAirlineChange = (value: string) => {
+    setSelectedAirline(value);
+    setSelectedOffers({});
+    setSelectedNormalOffer(null);
+    setReviewStep("closed");
+    setError("");
+  };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -370,7 +489,7 @@ export default function FlightSearch() {
         <div className="small text-muted mt-2">
           Total duration:{" "}
           <strong>
-           formatDuration(itinerary?.total_duration_seconds ?? 0)
+            {formatDuration(itinerary?.total_duration_seconds ?? 0)}
           </strong>
           {" · "}Stops:{" "}
           <strong>
@@ -382,10 +501,17 @@ export default function FlightSearch() {
     );
   };
 
-  // Search result data
+  // Filtered search result data
 
-  const offers = results?.data?.offers || [];
-  const multiSegments = results?.data?.segments || [];
+  const allOffers = results?.data?.offers || [];
+  const offers = allOffers.filter(matchesAirline);
+
+  const allMultiSegments = results?.data?.segments || [];
+
+  const multiSegments = allMultiSegments.map((segment) => ({
+    ...segment,
+    offers: (segment.offers || []).filter(matchesAirline),
+  }));
 
   const exchangeRate = Number(
     results?.pricing?.exchange_rate || 0
@@ -850,11 +976,7 @@ export default function FlightSearch() {
                         className="form-control"
                         value={passenger.firstName}
                         onChange={(e) =>
-                          updatePassenger(
-                            index,
-                            "firstName",
-                            e.target.value
-                          )
+                          updatePassenger(index, "firstName", e.target.value)
                         }
                         placeholder="First name as in passport"
                       />
@@ -868,11 +990,7 @@ export default function FlightSearch() {
                         className="form-control"
                         value={passenger.lastName}
                         onChange={(e) =>
-                          updatePassenger(
-                            index,
-                            "lastName",
-                            e.target.value
-                          )
+                          updatePassenger(index, "lastName", e.target.value)
                         }
                         placeholder="Last name as in passport"
                       />
@@ -888,11 +1006,7 @@ export default function FlightSearch() {
                         max={today}
                         value={passenger.dateOfBirth}
                         onChange={(e) =>
-                          updatePassenger(
-                            index,
-                            "dateOfBirth",
-                            e.target.value
-                          )
+                          updatePassenger(index, "dateOfBirth", e.target.value)
                         }
                       />
                     </div>
@@ -903,11 +1017,7 @@ export default function FlightSearch() {
                         className="form-select"
                         value={passenger.gender}
                         onChange={(e) =>
-                          updatePassenger(
-                            index,
-                            "gender",
-                            e.target.value
-                          )
+                          updatePassenger(index, "gender", e.target.value)
                         }
                       >
                         <option value="">Select Gender</option>
@@ -925,11 +1035,7 @@ export default function FlightSearch() {
                         className="form-control"
                         value={passenger.nationality}
                         onChange={(e) =>
-                          updatePassenger(
-                            index,
-                            "nationality",
-                            e.target.value
-                          )
+                          updatePassenger(index, "nationality", e.target.value)
                         }
                       />
                     </div>
@@ -962,11 +1068,7 @@ export default function FlightSearch() {
                         min={today}
                         value={passenger.passportExpiry}
                         onChange={(e) =>
-                          updatePassenger(
-                            index,
-                            "passportExpiry",
-                            e.target.value
-                          )
+                          updatePassenger(index, "passportExpiry", e.target.value)
                         }
                       />
                     </div>
@@ -1058,37 +1160,28 @@ export default function FlightSearch() {
                 </div>
 
                 <div className="card-body">
-                  {selectedFlightSummary.map(
-                    (offer, index) => (
-                      <div
-                        key={offer.id || index}
-                        className="border rounded p-3 mb-3"
-                      >
-                        <strong>
-                          {offer.outbound?.segments?.[0]
-                            ?.airline_name ||
-                            offer.outbound?.segments?.[0]?.airline ||
-                            offer.owner_airline ||
-                            "Airline"}
-                        </strong>
+                  {selectedFlightSummary.map((offer, index) => (
+                    <div
+                      key={offer.id || index}
+                      className="border rounded p-3 mb-3"
+                    >
+                      <strong>
+                        {offer.outbound?.segments?.[0]?.airline_name ||
+                          offer.outbound?.segments?.[0]?.airline ||
+                          offer.owner_airline ||
+                          "Airline"}
+                      </strong>
 
-                        <div className="small text-muted mt-1">
-                          Offer ID: {offer.id || "N/A"}
-                        </div>
-
-                        {renderItinerary(
-                          offer.outbound,
-                          "Outbound Flight"
-                        )}
-
-                        {offer.inbound &&
-                          renderItinerary(
-                            offer.inbound,
-                            "Return Flight"
-                          )}
+                      <div className="small text-muted mt-1">
+                        Offer ID: {offer.id || "N/A"}
                       </div>
-                    )
-                  )}
+
+                      {renderItinerary(offer.outbound, "Outbound Flight")}
+
+                      {offer.inbound &&
+                        renderItinerary(offer.inbound, "Return Flight")}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1110,8 +1203,7 @@ export default function FlightSearch() {
                       </div>
 
                       <div>
-                        Name: {passenger.firstName}{" "}
-                        {passenger.lastName}
+                        Name: {passenger.firstName} {passenger.lastName}
                       </div>
 
                       <div>
@@ -1122,13 +1214,11 @@ export default function FlightSearch() {
                       <div>Nationality: {passenger.nationality}</div>
 
                       <div>
-                        Passport:{" "}
-                        {passenger.passportNumber || "Not provided"}
+                        Passport: {passenger.passportNumber || "Not provided"}
                       </div>
 
                       <div>
-                        Passport Expiry:{" "}
-                        {passenger.passportExpiry || "Not provided"}
+                        Passport Expiry: {passenger.passportExpiry || "Not provided"}
                       </div>
                     </div>
                   ))}
@@ -1158,9 +1248,7 @@ export default function FlightSearch() {
                     <>
                       <div className="d-flex justify-content-between mb-2">
                         <span>Supplier Fare</span>
-                        <strong>
-                          ${totalSupplierUSD.toFixed(2)} USD
-                        </strong>
+                        <strong>${totalSupplierUSD.toFixed(2)} USD</strong>
                       </div>
 
                       <div className="d-flex justify-content-between mb-2">
@@ -1184,9 +1272,7 @@ export default function FlightSearch() {
                     <>
                       <div className="d-flex justify-content-between mb-2">
                         <span>Supplier Fare</span>
-                        <strong>
-                          ${normalSupplierUSD.toFixed(2)} USD
-                        </strong>
+                        <strong>${normalSupplierUSD.toFixed(2)} USD</strong>
                       </div>
 
                       <div className="d-flex justify-content-between mb-2">
@@ -1271,6 +1357,7 @@ export default function FlightSearch() {
                   setSelectedNormalOffer(null);
                   setPassengers([emptyPassenger("Adult")]);
                   setContact({ email: "", phone: "" });
+                  setSelectedAirline("");
                   setError("");
                 }}
               >
@@ -1423,11 +1510,7 @@ export default function FlightSearch() {
                       maxLength={3}
                       value={segment.from}
                       onChange={(e) =>
-                        handleSegmentChange(
-                          index,
-                          "from",
-                          e.target.value
-                        )
+                        handleSegmentChange(index, "from", e.target.value)
                       }
                     />
                   </div>
@@ -1440,11 +1523,7 @@ export default function FlightSearch() {
                       maxLength={3}
                       value={segment.to}
                       onChange={(e) =>
-                        handleSegmentChange(
-                          index,
-                          "to",
-                          e.target.value
-                        )
+                        handleSegmentChange(index, "to", e.target.value)
                       }
                     />
                   </div>
@@ -1485,6 +1564,37 @@ export default function FlightSearch() {
             </p>
           </div>
         )}
+
+        {/* Airline Filter */}
+
+        <div className="row g-3 mt-2">
+          <div className="col-md-6">
+            <label className="form-label fw-semibold">
+              Search by Airline
+            </label>
+
+            <select
+              className="form-select"
+              value={selectedAirline}
+              onChange={(e) => handleAirlineChange(e.target.value)}
+            >
+              <option value="">All Airlines</option>
+
+              {AIRLINES.map((airline) => (
+                <option
+                  key={airline.code}
+                  value={airline.code}
+                >
+                  {airline.name} ({airline.code})
+                </option>
+              ))}
+            </select>
+
+            <small className="text-muted">
+              Select an airline to filter the search results.
+            </small>
+          </div>
+        </div>
 
         {/* Passenger Counts */}
 
@@ -1604,6 +1714,17 @@ export default function FlightSearch() {
                   Total Offers: <strong>{offers.length}</strong>
                 </div>
               )}
+
+              {selectedAirline && (
+                <div>
+                  Airline Filter:{" "}
+                  <strong>
+                    {AIRLINES.find(
+                      (airline) => airline.code === selectedAirline
+                    )?.name || selectedAirline}
+                  </strong>
+                </div>
+              )}
             </div>
 
             {/* MULTI-CITY RESULTS */}
@@ -1657,171 +1778,161 @@ export default function FlightSearch() {
                       <div className="card-body p-3">
                         {segmentOffers.length === 0 && (
                           <div className="alert alert-secondary mb-0">
-                            No offers found for this segment.
+                            No offers found for this segment with the selected airline.
                           </div>
                         )}
 
-                        {segmentOffers.map(
-                          (offer, offerIndex) => {
-                            const outbound = offer.outbound;
-                            const flightParts = outbound?.segments || [];
-                            const firstSegment = flightParts[0];
-                            const lastSegment =
-                              flightParts[flightParts.length - 1];
+                        {segmentOffers.map((offer, offerIndex) => {
+                          const outbound = offer.outbound;
+                          const flightParts = outbound?.segments || [];
+                          const firstSegment = flightParts[0];
+                          const lastSegment =
+                            flightParts[flightParts.length - 1];
 
-                            const airline =
-                              firstSegment?.airline_name ||
-                              firstSegment?.airline ||
-                              offer.owner_airline ||
-                              "Airline";
+                          const airline =
+                            firstSegment?.airline_name ||
+                            firstSegment?.airline ||
+                            offer.owner_airline ||
+                            "Airline";
 
-                            const flightNumbers = flightParts
-                              .map((item) => item.flight_no)
-                              .filter(Boolean)
-                              .join(", ");
+                          const flightNumbers = flightParts
+                            .map((item) => item.flight_no)
+                            .filter(Boolean)
+                            .join(", ");
 
-                            const supplierPrice = Number(offer.price || 0);
-                            const estimatedBDT =
-                              supplierPrice * exchangeRate;
+                          const supplierPrice = Number(offer.price || 0);
+                          const estimatedBDT =
+                            supplierPrice * exchangeRate;
 
-                            const isSelected =
-                              selectedId === String(offer.id);
+                          const isSelected =
+                            selectedId === String(offer.id);
 
-                            return (
-                              <div
-                                key={offer.id || offerIndex}
-                                className={`card mb-3 ${
-                                  isSelected
-                                    ? "border-primary border-2"
-                                    : "border"
-                                }`}
-                              >
-                                <div className="card-body p-3">
-                                  <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                                    <div>
-                                      <h6 className="fw-bold mb-1">
-                                        {airline}
-                                      </h6>
+                          return (
+                            <div
+                              key={offer.id || offerIndex}
+                              className={`card mb-3 ${
+                                isSelected
+                                  ? "border-primary border-2"
+                                  : "border"
+                              }`}
+                            >
+                              <div className="card-body p-3">
+                                <div className="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                  <div>
+                                    <h6 className="fw-bold mb-1">
+                                      {airline}
+                                    </h6>
 
-                                      <div className="small text-muted">
-                                        Flight:{" "}
-                                        {flightNumbers || "Not available"}
-                                      </div>
-                                    </div>
-
-                                    {isSelected && (
-                                      <span className="badge bg-success">
-                                        Selected
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="row g-3 mt-1">
-                                    <div className="col-md-4">
-                                      <div className="small text-muted">
-                                        Departure
-                                      </div>
-
-                                      <strong>
-                                        {firstSegment?.origin ||
-                                          segment.from}
-                                      </strong>
-
-                                      <div className="small">
-                                        {formatDate(
-                                          firstSegment?.departure
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    <div className="col-md-4">
-                                      <div className="small text-muted">
-                                        Arrival
-                                      </div>
-
-                                      <strong>
-                                        {lastSegment?.destination ||
-                                          segment.to}
-                                      </strong>
-
-                                      <div className="small">
-                                        {formatDate(lastSegment?.arrival)}
-                                      </div>
-                                    </div>
-
-                                    <div className="col-md-4">
-                                      <div className="small text-muted">
-                                        Duration
-                                      </div>
-
-                                      <strong>
-                                        {formatDuration(
-                                          outbound?.total_duration_seconds
-                                        )}
-                                      </strong>
-
-                                      <div className="small text-muted">
-                                        Stops: {outbound?.stopovers ?? 0}
-                                      </div>
+                                    <div className="small text-muted">
+                                      Flight: {flightNumbers || "Not available"}
                                     </div>
                                   </div>
 
-                                  {renderItinerary(
-                                    outbound,
-                                    "Flight Itinerary"
+                                  {isSelected && (
+                                    <span className="badge bg-success">
+                                      Selected
+                                    </span>
                                   )}
+                                </div>
 
-                                  <div className="row align-items-center mt-3 g-2">
-                                    <div className="col-md-6">
-                                      <div className="small text-muted">
-                                        Supplier Fare
-                                      </div>
-
-                                      <strong>
-                                        ${supplierPrice.toFixed(2)} USD
-                                      </strong>
-
-                                      <div className="small text-muted">
-                                        Estimated BDT before service
-                                        charge: {formatBDT(estimatedBDT)}
-                                      </div>
-
-                                      <div className="small text-muted mt-1">
-                                        Baggage:{" "}
-                                        {getBaggage(offer.bags_price)}
-                                      </div>
+                                <div className="row g-3 mt-1">
+                                  <div className="col-md-4">
+                                    <div className="small text-muted">
+                                      Departure
                                     </div>
 
-                                    <div className="col-md-6 text-md-end">
-                                      <button
-                                        type="button"
-                                        className={`btn ${
-                                          isSelected
-                                            ? "btn-success"
-                                            : "btn-outline-primary"
-                                        }`}
-                                        onClick={() =>
-                                          selectMultiOffer(
-                                            index,
-                                            offer.id
-                                          )
-                                        }
-                                      >
-                                        {isSelected
-                                          ? "✓ Selected"
-                                          : "Select This Flight"}
-                                      </button>
+                                    <strong>
+                                      {firstSegment?.origin || segment.from}
+                                    </strong>
+
+                                    <div className="small">
+                                      {formatDate(firstSegment?.departure)}
                                     </div>
                                   </div>
 
-                                  <div className="small text-muted mt-2">
-                                    Offer ID: {offer.id}
+                                  <div className="col-md-4">
+                                    <div className="small text-muted">
+                                      Arrival
+                                    </div>
+
+                                    <strong>
+                                      {lastSegment?.destination || segment.to}
+                                    </strong>
+
+                                    <div className="small">
+                                      {formatDate(lastSegment?.arrival)}
+                                    </div>
+                                  </div>
+
+                                  <div className="col-md-4">
+                                    <div className="small text-muted">
+                                      Duration
+                                    </div>
+
+                                    <strong>
+                                      {formatDuration(
+                                        outbound?.total_duration_seconds
+                                      )}
+                                    </strong>
+
+                                    <div className="small text-muted">
+                                      Stops: {outbound?.stopovers ?? 0}
+                                    </div>
                                   </div>
                                 </div>
+
+                                {renderItinerary(
+                                  outbound,
+                                  "Flight Itinerary"
+                                )}
+
+                                <div className="row align-items-center mt-3 g-2">
+                                  <div className="col-md-6">
+                                    <div className="small text-muted">
+                                      Supplier Fare
+                                    </div>
+
+                                    <strong>
+                                      ${supplierPrice.toFixed(2)} USD
+                                    </strong>
+
+                                    <div className="small text-muted">
+                                      Estimated BDT before service
+                                      charge: {formatBDT(estimatedBDT)}
+                                    </div>
+
+                                    <div className="small text-muted mt-1">
+                                      Baggage:{" "}
+                                      {getBaggage(offer.bags_price)}
+                                    </div>
+                                  </div>
+
+                                  <div className="col-md-6 text-md-end">
+                                    <button
+                                      type="button"
+                                      className={`btn ${
+                                        isSelected
+                                          ? "btn-success"
+                                          : "btn-outline-primary"
+                                      }`}
+                                      onClick={() =>
+                                        selectMultiOffer(index, offer.id)
+                                      }
+                                    >
+                                      {isSelected
+                                        ? "✓ Selected"
+                                        : "Select This Flight"}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="small text-muted mt-2">
+                                  Offer ID: {offer.id}
+                                </div>
                               </div>
-                            );
-                          }
-                        )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1911,7 +2022,8 @@ export default function FlightSearch() {
               <>
                 {offers.length === 0 && (
                   <div className="alert alert-secondary">
-                    No flight offers found for this search.
+                    No flight offers found for this airline selection.
+                    Try selecting All Airlines or another airline.
                   </div>
                 )}
 
